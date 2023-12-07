@@ -26,6 +26,7 @@ class Zonotope:
         return Zonotope(self.center * other, self.generators * other)
     
     def relu(self):
+        #Bei mehreren Durchläufen max min (oder min max) speichern und wiederverwenden
         l = self.center - self.generators.abs().sum()
         u = self.center + self.generators.abs().sum()
         if torch.all(l > 0):
@@ -40,6 +41,7 @@ class Zonotope:
             return Zonotope(slope * self.center + new_error_term, torch.cat(self.generators, new_error_term))
 
     def add_alpha(self):
+        #MAYBE: sigmoid of unclamped variable
         self.slope = Variable(torch.clamp(self.slope_threshold, 0, 1), requires_grad=True)
         self.slope.retain_grad()
 
