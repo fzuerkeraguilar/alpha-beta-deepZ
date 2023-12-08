@@ -15,5 +15,4 @@ class ZonoConv:
         self.groups = layer.groups
 
     def forward(self, x: Zonotope):
-        y = F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
-        return y
+        return x.conv2d(self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
