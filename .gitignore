@@ -3,3 +3,4 @@ output
 *.class
 *.pyc
 **/__pycache__/
+venv
