@@ -1,8 +1,5 @@
 import torch.nn as nn
-from trans_layers.Conv import ZonoConv
-from trans_layers.Linear import ZonoLinear
-from trans_layers.ReLU import ZonoReLU
-
+from .trans_layers import ZonoConv, ZonoLinear, ZonoReLU
 
 
 def trans_layer(layer: nn.Module):
@@ -14,3 +11,7 @@ def trans_layer(layer: nn.Module):
         return ZonoReLU()
     else:
         raise Exception("Unknown layer type")
+
+
+def trans_network(layers):
+    return nn.Sequential(*layers)
