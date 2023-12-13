@@ -9,6 +9,15 @@ class Zonotope:
         self.center = center
         self.generators = generators
 
+    def __add__(self, other):
+        return Zonotope(self.center + other.center, self.generators + other.generators)
+
+    def __sub__(self, other):
+        return Zonotope(self.center - other.center, self.generators - other.generators)
+
+    def __mul__(self, other):
+        return Zonotope(self.center * other, self.generators * other)
+
     def to_device(self, device):
         self.center = self.center.to(device)
         self.generators = self.generators.to(device)
