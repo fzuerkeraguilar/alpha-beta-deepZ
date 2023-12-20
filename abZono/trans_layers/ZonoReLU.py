@@ -18,7 +18,7 @@ class ZonoReLU(nn.Module):
             return Zonotope(torch.zeros_like(x.center), torch.zeros_like(x.generators))
         else:
             where_crossing = torch.bitwise_and(l < 0, u > 0)
-            initial_slope = u / (u - l)
+            initial_slope = u / (u - l) # slope with minimal area
             if self.optimize_slope:
                 self.slope.data = torch.clamp(self.slope.data, 0, initial_slope)  # clamp the slope
                 slope = self.slope * where_crossing.float()  # apply the mask to the slope
