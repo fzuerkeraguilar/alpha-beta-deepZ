@@ -3,13 +3,10 @@ import torch
 
 class Zonotope:
 
-    def __init__(self, center, generators, optimize_slope = False):
+    def __init__(self, center, generators):
         self.center = center
         self.generators = generators
-        self.optimize_slope = optimize_slope
         self.center.requires_grad = False
-        if self.optimize_slope:
-            self.slope = torch.zeros_like(center, requires_grad=True)
 
     def __add__(self, other):
         return Zonotope(self.center + other.center, self.generators + other.generators)
@@ -26,7 +23,9 @@ class Zonotope:
 
     @property
     def slope_threshold(self) -> torch.Tensor:
-        return self.upper_bound / (self.upper_bound - self.lower_bound)
+        l = self.center - self.generators.abs().sum(dim=0)
+        u = self.center + self.generators.abs().sum(dim=0)
+        return u / (u - l)
 
     def size(self):
         return self.center.size()

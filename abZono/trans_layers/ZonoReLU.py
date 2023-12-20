@@ -2,11 +2,13 @@ import torch
 import torch.nn as nn
 from ..zonotope import Zonotope
 
+
 class ZonoReLU(nn.Module):
 
-    def __init__(self, size: torch.Size):
+    def __init__(self, optimize_slope=False):
         super().__init__()
-        self.slopes = nn.Parameter(torch.zeros(size))
+        if optimize_slope:
+            self.slope = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 
     def forward(self, x: Zonotope):
         l = x.center - x.generators.abs().sum(dim=0)

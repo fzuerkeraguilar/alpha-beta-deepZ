@@ -8,10 +8,11 @@ def transform_layer(layer: nn.Module):
     elif isinstance(layer, nn.Linear):
         return ZonoLinear(layer)
     elif isinstance(layer, nn.ReLU):
-        return ZonoReLU(layer)
+        return ZonoReLU(optimize_slope=False)
     else:
         raise NotImplementedError("Layer not supported: {}".format(layer))
-    
+
+
 def transform_network(network: nn.Module):
     layers = []
     for layer in network.children():
