@@ -21,6 +21,9 @@ class Zonotope:
         self.center = self.center.to(device)
         self.generators = self.generators.to(device)
 
+    def get_label(self):
+        return torch.argmax(self.center + self.generators.abs().sum(dim=0))
+
     @property
     def slope_threshold(self) -> torch.Tensor:
         l = self.center - self.generators.abs().sum(dim=0)
