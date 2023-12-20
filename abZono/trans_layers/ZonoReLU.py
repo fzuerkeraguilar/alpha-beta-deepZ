@@ -1,6 +1,6 @@
 import torch.nn as nn
 from ..zonotope import Zonotope
-
+from ..functions.ZonoReLUFun import ZonoReLUFun
 
 class ZonoReLU(nn.Module):
 
@@ -8,4 +8,4 @@ class ZonoReLU(nn.Module):
         super().__init__()
 
     def forward(self, x: Zonotope):
-        return x.relu()
+        return  ZonoReLUFun.apply(x)

@@ -5,9 +5,12 @@ from torch.autograd import Variable
 
 class Zonotope:
 
-    def __init__(self, center, generators):
+    def __init__(self, center, generators, optimize_slope = False):
         self.center = center
         self.generators = generators
+        self.optimize_slope = optimize_slope
+        if self.optimize_slope:
+            self.slope = torch.zeros_like(center, requires_grad=True)
 
     def __add__(self, other):
         return Zonotope(self.center + other.center, self.generators + other.generators)
@@ -44,11 +47,6 @@ class Zonotope:
     def conv2d(self, weight: torch.Tensor, bias: torch.Tensor, stride, padding, dilation, groups):
         return Zonotope(F.conv2d(self.center, weight, bias, stride, padding, dilation, groups),
                         F.conv2d(self.generators, weight, None, stride, padding, dilation, groups))
-
-    def add_alpha(self):
-        # MAYBE: sigmoid of unclamped variable
-        self.slope = Variable(torch.clamp(self.slope_threshold, 0, 1), requires_grad=True)
-        self.slope.retain_grad()
 
     @property
     def slope_threshold(self) -> torch.Tensor:
