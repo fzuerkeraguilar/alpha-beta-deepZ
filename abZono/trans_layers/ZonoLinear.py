@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 from ..zonotope import Zonotope
 
 
@@ -10,4 +11,5 @@ class ZonoLinear(nn.Module):
         self.bias = layer.bias.data if layer.bias is not None else None
 
     def forward(self, x: Zonotope):
-        return x.linear(self.weight, self.bias)
+         return Zonotope(F.linear(x.center, self.weight, self.bias),
+                         F.linear(x.generators, self.weight))

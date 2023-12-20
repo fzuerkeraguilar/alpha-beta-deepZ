@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 from ..zonotope import Zonotope
 
 
@@ -14,4 +15,5 @@ class ZonoConv:
         self.groups = layer.groups
 
     def forward(self, x: Zonotope):
-        return x.conv2d(self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        return Zonotope(F.conv2d(x.center, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups),
+                        F.conv2d(x.generators, self.weight, None, self.stride, self.padding, self.dilation, self.groups))
