@@ -1,8 +1,9 @@
 from torch.autograd import Function
+from ..zonotope import Zonotope
 
 class ZonotopeReLU(Function):
     @staticmethod
-    def forward(ctx, zonotope):
+    def forward(ctx, zonotope: Zonotope):
         ctx.save_for_backward(zonotope)
         # Your forward computation here
         return zonotope.relu()
