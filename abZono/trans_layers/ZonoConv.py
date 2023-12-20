@@ -8,7 +8,9 @@ class ZonoConv:
     def __init__(self, layer: nn.Conv2d):
         super().__init__()
         self.weight = layer.weight.data
+        self.weight.requires_grad = False
         self.bias = layer.bias.data
+        self.bias.requires_grad = False
         self.stride = layer.stride
         self.padding = layer.padding
         self.dilation = layer.dilation
