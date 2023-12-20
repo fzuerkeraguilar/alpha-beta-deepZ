@@ -9,6 +9,7 @@ class Zonotope:
         self.center = center
         self.generators = generators
         self.optimize_slope = optimize_slope
+        self.center.requires_grad = False
         if self.optimize_slope:
             self.slope = torch.zeros_like(center, requires_grad=True)
 
