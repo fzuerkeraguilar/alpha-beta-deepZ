@@ -8,4 +8,4 @@ class ZonoReLU(nn.Module):
         super().__init__()
 
     def forward(self, x: Zonotope):
-        return  ZonoReLUFun.apply(x)
+        return ZonoReLUFun.apply(x)
