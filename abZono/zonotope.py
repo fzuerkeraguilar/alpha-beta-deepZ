@@ -30,8 +30,13 @@ class Zonotope:
         u = self.center + self.generators.abs().sum(dim=0)
         return u / (u - l)
 
+    @property
     def size(self):
         return self.center.size()
+
+    @property
+    def device(self):
+        return self.center.device
 
     def __repr__(self):
         return "Zonotope(center={}, generators={})".format(self.center, self.generators)
