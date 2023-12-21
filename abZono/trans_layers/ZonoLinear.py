@@ -8,10 +8,7 @@ class ZonoLinear(nn.Module):
     def __init__(self, layer: nn.Linear):
         super().__init__()
         self.weight = layer.weight.data
-        self.weight.requires_grad = False
         self.bias = layer.bias.data if layer.bias is not None else None
-        if layer.bias is not None:
-            self.bias.requires_grad = False
 
     def forward(self, x: Zonotope):
         return Zonotope(F.linear(x.center, self.weight, self.bias),

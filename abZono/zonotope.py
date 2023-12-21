@@ -6,7 +6,6 @@ class Zonotope:
     def __init__(self, center, generators):
         self.center = center
         self.generators = generators
-        self.center.requires_grad = False
 
     def __add__(self, other):
         return Zonotope(self.center + other.center, self.generators + other.generators)

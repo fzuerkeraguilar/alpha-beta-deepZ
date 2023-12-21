@@ -9,14 +9,17 @@ class TestExposeExample(unittest.TestCase):
     def test_expose_example(self):
         x = Zonotope(torch.tensor([4.0, 3.0]), torch.tensor([[2.0, 1.0], [1.0, 2.0]]))
         net = ExposeNet()
-        trans_layers = transform_network(net)
-        result = trans_layers(x)
+        transformed_network = transform_network(net)
+        result = transformed_network(x)
         print(result)
         reference = Zonotope(center=torch.tensor([10.0000, 0.1250]), generators=torch.tensor([[4.0000, -0.2500],
                                                                                               [5.0000, 0.2500],
                                                                                               [0.0000, 0.3750]]))
+        # Compare to manual result
         self.assertTrue(torch.allclose(result.center, reference.center))
         self.assertTrue(torch.allclose(result.generators, reference.generators))
+        # Assert that no parameters were added
+        self.assertRaises(StopIteration, next, transformed_network.parameters())
 
 
 if __name__ == '__main__':

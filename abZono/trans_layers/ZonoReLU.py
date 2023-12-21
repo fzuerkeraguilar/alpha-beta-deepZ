@@ -7,6 +7,7 @@ class ZonoReLU(nn.Module):
 
     def __init__(self, optimize_slope=False):
         super().__init__()
+        self.slope = None
         self.optimize_slope = optimize_slope
 
     def forward(self, x: Zonotope):
@@ -18,13 +19,12 @@ class ZonoReLU(nn.Module):
             return Zonotope(torch.zeros_like(x.center), torch.zeros_like(x.generators))
         else:
             where_crossing = torch.bitwise_and(l < 0, u > 0)
-            initial_slope = u / (u - l) # slope with minimal area
+            initial_slope = u / (u - l)  # slope with minimal area
             if self.optimize_slope:
-                self.slope.data = torch.clamp(self.slope.data, 0, initial_slope)  # clamp the slope
-                slope = self.slope * where_crossing.float()  # apply the mask to the slope
+                self.slope = nn.Parameter(initial_slope * where_crossing.float())
             else:
-                slope = initial_slope * where_crossing.float()
-            new_generators = -slope * l * 0.5
-            return Zonotope(torch.where(where_crossing, x.center * slope + new_generators, x.center),
-                            torch.cat((torch.where(where_crossing, x.generators * slope, x.generators),
+                self.slope = initial_slope * where_crossing.float()
+            new_generators = -self.slope * l * 0.5
+            return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
+                            torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
                                        new_generators.unsqueeze(0))))
