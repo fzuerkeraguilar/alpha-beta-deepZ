@@ -37,6 +37,10 @@ class Zonotope:
     def device(self):
         return self.center.device
 
+    @staticmethod
+    def from_l_inf(center, radius):
+        return Zonotope(center, torch.diag(radius))
+
     def __repr__(self):
         return "Zonotope(center={}, generators={})".format(self.center, self.generators)
 

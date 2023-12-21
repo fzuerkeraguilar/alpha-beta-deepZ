@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from ..zonotope import Zonotope
 
 
@@ -21,7 +22,8 @@ class ZonoReLU(nn.Module):
             where_crossing = torch.bitwise_and(l < 0, u > 0)
             initial_slope = u / (u - l)  # slope with minimal area
             if self.optimize_slope:
-                self.slope = nn.Parameter(initial_slope * where_crossing.float())
+                self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
+                self.slope = F.sigmoid(self.slope_param) * initial_slope * where_crossing.float()
             else:
                 self.slope = initial_slope * where_crossing.float()
             new_generators = -self.slope * l * 0.5
