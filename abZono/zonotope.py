@@ -16,6 +16,20 @@ class Zonotope:
     def __mul__(self, other):
         return Zonotope(self.center * other, self.generators * other)
 
+    def l_inf_norm(self):
+        return self.generators.abs().sum(dim=0)
+    
+    def l_inf_loss(self, target):
+        return (self.l_inf_norm() - target.l_inf_norm()).abs().sum()
+    
+    def min_diff(self, true_label):
+        min_value_of_true_label = torch.full_like(self.center, (self.center[true_label] - self.generators.abs().sum(dim=0)[true_label]).item())
+        print(min_value_of_true_label)
+        return min_value_of_true_label - (self.center + self.generators.abs().sum(dim=0))
+    
+    def label_loss(self, target_label):
+        return torch.clamp(self.min_diff(target_label), min=0).sum()
+
     def to_device(self, device):
         self.center = self.center.to(device)
         self.generators = self.generators.to(device)
@@ -40,6 +54,14 @@ class Zonotope:
     @staticmethod
     def from_l_inf(center, radius):
         return Zonotope(center, torch.diag(radius))
+    
+    @staticmethod
+    def zeros_like(zonotope):
+        return Zonotope(torch.zeros_like(zonotope.center), torch.zeros_like(zonotope.generators))
+    
+    @staticmethod
+    def ones_like(zonotope):
+        return Zonotope(torch.ones_like(zonotope.center), torch.zeros_like(zonotope.generators))
 
     def __repr__(self):
         return "Zonotope(center={}, generators={})".format(self.center, self.generators)

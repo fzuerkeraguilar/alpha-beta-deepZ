@@ -23,8 +23,8 @@ class ZonoReLU(nn.Module):
             initial_slope = u / (u - l)  # slope with minimal area
             if self.optimize_slope:
                 self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
-                self.slope = torch.sigmoid(self.slope_param) * initial_slope * where_crossing.float()
-                new_generators = (torch.ones_like(self.slope) - self.slope) * u * 0.5
+                self.slope = torch.sigmoid(self.slope_param) * initial_slope
+                new_generators = (torch.ones_like(self.slope) - self.slope) * u * 0.5 * where_crossing.float()
                 return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
                                 torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
                                         new_generators.unsqueeze(0))))
