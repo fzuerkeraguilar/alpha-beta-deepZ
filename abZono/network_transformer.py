@@ -1,5 +1,5 @@
 import torch.nn as nn
-from .trans_layers import ZonoConv, ZonoLinear, ZonoReLU
+from .trans_layers import ZonoConv, ZonoLinear, ZonoReLU, ZonoFlatten
 
 
 def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False):
@@ -9,6 +9,8 @@ def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False)
         return ZonoLinear(layer)
     elif isinstance(layer, nn.ReLU):
         return ZonoReLU(optimize_slope=optimize_alpha)
+    elif isinstance(layer, nn.Flatten):
+        return ZonoFlatten(layer)
     else:
         raise NotImplementedError("Layer not supported: {}".format(layer))
 
