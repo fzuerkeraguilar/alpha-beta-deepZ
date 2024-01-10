@@ -24,9 +24,13 @@ class ZonoReLU(nn.Module):
             if self.optimize_slope:
                 self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
                 self.slope = F.sigmoid(self.slope_param) * initial_slope * where_crossing.float()
+                new_generators = (torch.ones_like(self.slope) - self.slope) * u * 0.5
+                return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
+                                torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
+                                        new_generators.unsqueeze(0))))
             else:
                 self.slope = initial_slope * where_crossing.float()
-            new_generators = -self.slope * l * 0.5
-            return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
-                            torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
-                                       new_generators.unsqueeze(0))))
+                new_generators = -self.slope * l * 0.5
+                return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
+                                torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
+                                        new_generators.unsqueeze(0))))
