@@ -1,16 +1,17 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from ..zonotope import Zonotope
+from zonotope import Zonotope
 
 
-class ZonoConv:
+class ZonoConv(nn.Module):
 
     def __init__(self, layer: nn.Conv2d):
         super().__init__()
         self.weight = layer.weight.data
         self.weight.requires_grad = False
-        self.bias = layer.bias.data
-        self.bias.requires_grad = False
+        self.bias = layer.bias.data if layer.bias is not None else None
+        if self.bias is not None:
+            self.bias.requires_grad = False
         self.stride = layer.stride
         self.padding = layer.padding
         self.dilation = layer.dilation

@@ -3,3 +3,7 @@ from .ZonoLinear import ZonoLinear
 from .ZonoReLU import ZonoReLU
 from .ZonoFlatten import ZonoFlatten
 from .ZonoNormalize import ZonoNormalize
+from .ZonoOnnxConstant import ZonoOnnxConstant
+from .ZonoOnnxTranspose import ZonoOnnxTranspose
+from .ZonoOnnxReshape import ZonoOnnxReshape
+from .ZonoMaxPool2d import ZonoMaxPool2d

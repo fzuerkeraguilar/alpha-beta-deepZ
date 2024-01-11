@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from ..zonotope import Zonotope
+from zonotope import Zonotope
 
 
 class ZonoLinear(nn.Module):

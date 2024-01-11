@@ -1,6 +1,6 @@
 import torch.nn as nn
-import torch.nn.functional as F
-from ..zonotope import Zonotope
+import torch
+from zonotope import Zonotope
 
 class ZonoFlatten:
 
@@ -10,4 +10,4 @@ class ZonoFlatten:
         self.end_dim = layer.end_dim
 
     def forward(self, x: Zonotope):
-        return Zonotope(F.flatten(x.center, self.start_dim, self.end_dim), F.flatten(x.generators, self.start_dim, self.end_dim))
+        return Zonotope(torch.flatten(x.center, self.start_dim, self.end_dim), torch.flatten(x.generators, self.start_dim, self.end_dim))

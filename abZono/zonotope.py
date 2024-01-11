@@ -1,3 +1,7 @@
+from email import generator
+from locale import normalize
+from math import perm
+import re
 import torch
 
 
@@ -15,6 +19,17 @@ class Zonotope:
 
     def __mul__(self, other):
         return Zonotope(self.center * other, self.generators * other)
+    
+    def reshape(self, shape):
+        return Zonotope(self.center.reshape(shape), self.generators.reshape(shape))
+    
+    def permute(self, *dims):
+        return Zonotope(self.center.permute(*dims), self.generators.permute(*dims))
+    
+    def normalize(self, dim, p=2):
+        return Zonotope(self.center / self.center.norm(p, dim=dim, keepdim=True), self.generators / self.center.norm(p, dim=dim, keepdim=True))
+    
+    
 
     def l_inf_norm(self):
         return self.generators.abs().sum(dim=0)
@@ -53,7 +68,7 @@ class Zonotope:
 
     @staticmethod
     def from_l_inf(center, radius):
-        return Zonotope(center, torch.diag(radius))
+        return Zonotope(center, torch.ones_like(center) * radius)
     
     @staticmethod
     def zeros_like(zonotope):
