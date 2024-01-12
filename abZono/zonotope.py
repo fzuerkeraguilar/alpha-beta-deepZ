@@ -28,8 +28,6 @@ class Zonotope:
     
     def normalize(self, dim, p=2):
         return Zonotope(self.center / self.center.norm(p, dim=dim, keepdim=True), self.generators / self.center.norm(p, dim=dim, keepdim=True))
-    
-    
 
     def l_inf_norm(self):
         return self.generators.abs().sum(dim=0)
@@ -63,12 +61,16 @@ class Zonotope:
         return self.center.size()
 
     @property
+    def shape(self):
+        return self.center.shape
+
+    @property
     def device(self):
         return self.center.device
 
     @staticmethod
     def from_l_inf(center, radius):
-        return Zonotope(center, torch.ones_like(center) * radius)
+        return Zonotope(center, (torch.ones_like(center) * radius).unsqueeze(0))
     
     @staticmethod
     def zeros_like(zonotope):

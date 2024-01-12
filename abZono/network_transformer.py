@@ -1,10 +1,12 @@
 import torch.nn as nn
-from trans_layers import ZonoConv, ZonoLinear, ZonoReLU, ZonoFlatten, ZonoOnnxConstant, ZonoMaxPool2d
+from trans_layers import ZonoConv, ZonoLinear, ZonoReLU, ZonoFlatten, ZonoOnnxConstant, ZonoMaxPool2d, ZonoOnnxTranspose, ZonoOnnxReshape
 from onnx2torch.node_converters.reshape import OnnxReshape
 from onnx2torch.node_converters.constant import OnnxConstant
+from onnx2torch.node_converters import OnnxTranspose
 
 
 def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False):
+    print("Transforming layer: {}".format(layer))
     if isinstance(layer, nn.Conv2d):
         return ZonoConv(layer)
     elif isinstance(layer, nn.Linear):
@@ -16,15 +18,18 @@ def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False)
     elif isinstance(layer, nn.MaxPool2d):
         return ZonoMaxPool2d(layer)
     elif isinstance(layer, OnnxReshape):
-        return layer
+        return ZonoOnnxReshape(layer)
+    elif isinstance(layer, OnnxTranspose):
+        return ZonoOnnxTranspose(layer)
     elif isinstance(layer, OnnxConstant):
         return ZonoOnnxConstant(layer)
     else:
-        raise NotImplementedError("Layer not supported: {}".format(layer))
+        return layer
 
 
 def transform_network(network: nn.Module, optimize_alpha=False, optimize_beta=False):
-    layers = []
-    for layer in network.children():
-        layers.append(transform_layer(layer, optimize_alpha, optimize_beta))
-    return nn.Sequential(*layers)
+    for name, module in network.named_children():
+        replacement = transform_network(module, optimize_alpha, optimize_beta)
+        if replacement is not None:
+            setattr(network, name, replacement)
+    return transform_layer(network, optimize_alpha, optimize_beta)
