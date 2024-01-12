@@ -6,7 +6,6 @@ from onnx2torch.node_converters import OnnxTranspose
 
 
 def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False):
-    print("Transforming layer: {}".format(layer))
     if isinstance(layer, nn.Conv2d):
         return ZonoConv(layer)
     elif isinstance(layer, nn.Linear):
