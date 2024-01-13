@@ -1,6 +1,4 @@
-import torch
 import torch.nn as nn
-from zonotope import Zonotope
 from onnx2torch.node_converters.constant import OnnxConstant
 
 

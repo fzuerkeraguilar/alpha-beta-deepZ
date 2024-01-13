@@ -2,3 +2,5 @@ torch
 numpy
 onnx2torch
 vnnlib
+onnx
+onnxruntime

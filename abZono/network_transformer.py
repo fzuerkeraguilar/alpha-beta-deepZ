@@ -1,5 +1,5 @@
 import torch.nn as nn
-from trans_layers import ZonoConv, ZonoLinear, ZonoReLU, ZonoFlatten, ZonoOnnxConstant, ZonoMaxPool2d, ZonoOnnxTranspose, ZonoOnnxReshape
+from trans_layers import ZonoConv2d, ZonoLinear, ZonoReLU, ZonoFlatten, ZonoOnnxConstant, ZonoMaxPool2d, ZonoOnnxTranspose, ZonoOnnxReshape
 from onnx2torch.node_converters.reshape import OnnxReshape
 from onnx2torch.node_converters.constant import OnnxConstant
 from onnx2torch.node_converters import OnnxTranspose
@@ -7,7 +7,7 @@ from onnx2torch.node_converters import OnnxTranspose
 
 def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False):
     if isinstance(layer, nn.Conv2d):
-        return ZonoConv(layer)
+        return ZonoConv2d(layer)
     elif isinstance(layer, nn.Linear):
         return ZonoLinear(layer)
     elif isinstance(layer, nn.ReLU):

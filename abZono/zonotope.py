@@ -1,14 +1,13 @@
-from email import generator
-from locale import normalize
-from math import perm
-import re
 import torch
+import torch.nn.functional as F
 
 
 class Zonotope:
 
     def __init__(self, center, generators):
+        # Center has the same shape as the original tensor
         self.center = center
+        # Generator has one more dimension than the input, the first dimension is the number of generators
         self.generators = generators
 
     def __add__(self, other):
@@ -19,33 +18,75 @@ class Zonotope:
 
     def __mul__(self, other):
         return Zonotope(self.center * other, self.generators * other)
-    
-    def reshape(self, shape):
-        return Zonotope(self.center.reshape(shape), self.generators.reshape(shape))
-    
+
+    def reshape(self, *shape):
+        # Reshape the center
+        reshaped_center = self.center.reshape(*shape)
+
+        # Reshape each generator
+        generator_shape = [self.generators.shape[0]] + list(shape)
+        reshaped_generators = self.generators.reshape(generator_shape)
+
+        return Zonotope(reshaped_center, reshaped_generators)
+
     def permute(self, *dims):
-        return Zonotope(self.center.permute(*dims), self.generators.permute(*dims))
-    
+        # Permute the center
+        permuted_center = self.center.permute(*dims)
+
+        # Permute the generators. The first dimension (number of generators) remains unchanged.
+        generator_dims = [0] + [dim + 1 for dim in dims]
+        permuted_generators = self.generators.permute(*generator_dims)
+
+        return Zonotope(permuted_center, permuted_generators)
+
+    def transpose(self, dim0, dim1):
+        # Transpose the center
+        transposed_center = self.center.transpose(dim0, dim1)
+
+        # Adjust the dimensions for the generators and then transpose
+        gen_dim0 = dim0 + 1  # if dim0 != 0 else dim0
+        gen_dim1 = dim1 + 1  # if dim1 != 0 else dim1
+        transposed_generators = self.generators.transpose(gen_dim0, gen_dim1)
+
+        return Zonotope(transposed_center, transposed_generators)
+
+    def flatten(self, start_dim=0, end_dim=-1):
+        # Flatten the center
+        flattened_center = self.center.flatten(start_dim, end_dim)
+
+        # Adjust the dimensions for the generators and then flatten
+        # The first dimension (number of generators) is not included in the flattening
+        gen_start_dim = start_dim + 1  # if start_dim != 0 else start_dim
+        gen_end_dim = end_dim + 1  # if end_dim != -1 else end_dim
+        flattened_generators = self.generators.flatten(
+            gen_start_dim, gen_end_dim)
+
+        return Zonotope(flattened_center, flattened_generators)
+
     def normalize(self, dim, p=2):
-        return Zonotope(self.center / self.center.norm(p, dim=dim, keepdim=True), self.generators / self.center.norm(p, dim=dim, keepdim=True))
+        return Zonotope(self.center / self.center.norm(p, dim=dim, keepdim=True),
+                        self.generators / self.center.norm(p, dim=dim, keepdim=True))
 
     def l_inf_norm(self):
         return self.generators.abs().sum(dim=0)
-    
+
     def l_inf_loss(self, target):
         return (self.l_inf_norm() - target.l_inf_norm()).abs().sum()
-    
+
     def min_diff(self, true_label):
-        min_value_of_true_label = torch.full_like(self.center, (self.center[true_label] - self.generators.abs().sum(dim=0)[true_label]).item())
-        print(min_value_of_true_label)
+        min_value_of_true_label = torch.full_like(self.center, (
+            self.center[true_label] - self.generators.abs().sum(dim=0)[true_label]).item())
         return min_value_of_true_label - (self.center + self.generators.abs().sum(dim=0))
-    
+
     def label_loss(self, target_label):
         return torch.clamp(self.min_diff(target_label), min=0).sum()
 
     def to_device(self, device):
         self.center = self.center.to(device)
         self.generators = self.generators.to(device)
+
+    def size(self):
+        return self.center.size()
 
     def get_label(self):
         return torch.argmax(self.center + self.generators.abs().sum(dim=0))
@@ -57,10 +98,6 @@ class Zonotope:
         return u / (u - l)
 
     @property
-    def size(self):
-        return self.center.size()
-
-    @property
     def shape(self):
         return self.center.shape
 
@@ -69,16 +106,28 @@ class Zonotope:
         return self.center.device
 
     @staticmethod
+    def from_vnnlib(l_u_list, shape, dtype):
+        centers = []
+        generators = []
+        for l, u in l_u_list:
+            centers.append((l + u) / 2)
+            generators.append((u - l) / 2)
+
+        center = torch.tensor(centers, dtype=dtype).reshape(shape)
+        generators = torch.tensor(generators, dtype=dtype).reshape(1, *shape)
+        return Zonotope(center, generators)
+
+    @staticmethod
     def from_l_inf(center, radius):
         return Zonotope(center, (torch.ones_like(center) * radius).unsqueeze(0))
-    
+
     @staticmethod
     def zeros_like(zonotope):
-        return Zonotope(torch.zeros_like(zonotope.center), torch.zeros_like(zonotope.generators))
-    
+        return Zonotope(torch.zeros_like(zonotope.center), torch.zeros_like(zonotope.generators).unsqueeze(0))
+
     @staticmethod
     def ones_like(zonotope):
-        return Zonotope(torch.ones_like(zonotope.center), torch.zeros_like(zonotope.generators))
+        return Zonotope(torch.ones_like(zonotope.center), torch.zeros_like(zonotope.generators).unsqueeze(0))
 
     def __repr__(self):
         return "Zonotope(center={}, generators={})".format(self.center, self.generators)

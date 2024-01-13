@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from zonotope import Zonotope
 
 
@@ -25,9 +24,13 @@ class ZonoReLU(nn.Module):
                 self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
                 self.slope = torch.sigmoid(self.slope_param) * initial_slope
                 new_generators = (torch.ones_like(self.slope) - self.slope) * u * 0.5 * where_crossing.float()
+                if new_generators.dim() < x.generators.dim():
+                    new_generators_unsqueezed = new_generators.unsqueeze(0)
+                else:
+                    new_generators_unsqueezed = new_generators
                 return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
                                 torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
-                                        new_generators)))
+                                           new_generators_unsqueezed)))
             else:
                 self.slope = initial_slope * where_crossing.float()
                 new_generators = -self.slope * l * 0.5
@@ -37,4 +40,4 @@ class ZonoReLU(nn.Module):
                     new_generators_unsqueezed = new_generators
                 return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
                                 torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
-                                        new_generators_unsqueezed)))
+                                           new_generators_unsqueezed)))
