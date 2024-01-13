@@ -1,3 +1,6 @@
 [submodule "test/dnnv-benchmarks"]
 	path = test/dnnv-benchmarks
 	url = git@github.com:dlshriver/dnnv-benchmarks.git
+[submodule "test/vnncomp2023_benchmarks"]
+	path = test/vnncomp2023_benchmarks
+	url = git@github.com:ChristopherBrix/vnncomp2023_benchmarks.git
