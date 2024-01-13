@@ -6,3 +6,7 @@ from .ZonoOnnxConstant import ZonoOnnxConstant
 from .ZonoOnnxTranspose import ZonoOnnxTranspose
 from .ZonoOnnxReshape import ZonoOnnxReshape
 from .ZonoMaxPool2d import ZonoMaxPool2d
+from .ZonoOnnxPad import ZonoOnnxPadStatic, ZonoOnnxPadDynamic
+from .ZonoOnnxFlatten import ZonoOnnxFlatten
+from .ZonoAvgPool import ZonoAvgPool1d, ZonoAvgPool2d, ZonoAvgPool3d
+from .ZonoOnnxBinaryMathOperation import ZonoOnnxBinaryMathOperation

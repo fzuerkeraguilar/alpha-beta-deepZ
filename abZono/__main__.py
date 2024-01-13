@@ -63,7 +63,7 @@ def main():
     zono_net = transform_network(net, optimize_alpha=False)
     logger.debug(zono_net)
     y = zono_net(x)
-
+    print(y)
     print("Predicted Label: ", y.get_label())
 
 

@@ -1,3 +1,5 @@
+from audioop import avg
+import re
 import torch
 import torch.nn.functional as F
 
@@ -11,13 +13,36 @@ class Zonotope:
         self.generators = generators
 
     def __add__(self, other):
-        return Zonotope(self.center + other.center, self.generators + other.generators)
+        new_center = self.center + other.center
+        # If the number of generators is the same, we can simply add them
+        if self.generators.shape[0] == other.generators.shape[0]:
+            new_generators = self.generators + other.generators
+        # Otherwise, we need to pad the one with fewer generators
+        elif self.generators.shape[0] < other.generators.shape[0]:
+            pad = [0, 0] * (len(self.generators.shape) - 1) + [0, other.generators.shape[0] - self.generators.shape[0]]
+            padded_generators = F.pad(self.generators, pad)
+            new_generators = padded_generators + other.generators
+        else:
+            pad = [0, 0] * (len(other.generators.shape) - 1) + [0, self.generators.shape[0] - other.generators.shape[0]]
+            padded_generators = F.pad(other.generators, pad)
+            new_generators = self.generators + padded_generators
+            
+        return Zonotope(new_center, new_generators)
 
     def __sub__(self, other):
         return Zonotope(self.center - other.center, self.generators - other.generators)
 
     def __mul__(self, other):
+        if isinstance(other, Zonotope):
+            return Zonotope(self.center * other.center, self.generators * other.center + other.generators * self.center)
         return Zonotope(self.center * other, self.generators * other)
+
+    def __truediv__(self, other):
+        if isinstance(other, Zonotope):
+            return Zonotope(self.center / other.center,
+                            (other.center * self.generators - self.center * other.generators) / (
+                                        other.center * other.center))
+        return Zonotope(self.center / other, self.generators / other)
 
     def reshape(self, *shape):
         # Reshape the center
@@ -56,12 +81,32 @@ class Zonotope:
 
         # Adjust the dimensions for the generators and then flatten
         # The first dimension (number of generators) is not included in the flattening
-        gen_start_dim = start_dim + 1  # if start_dim != 0 else start_dim
-        gen_end_dim = end_dim + 1  # if end_dim != -1 else end_dim
+        gen_start_dim = start_dim + 1 if start_dim != 0 else start_dim # TODO: check if this is correct
+        gen_end_dim = end_dim + 1 if end_dim != -1 else end_dim # TODO: check if this is correct
         flattened_generators = self.generators.flatten(
             gen_start_dim, gen_end_dim)
 
         return Zonotope(flattened_center, flattened_generators)
+
+    def pad(self, pad, mode='constant', value=0):
+        padded_center = F.pad(self.center, pad, mode, value)
+
+        # Adjust the dimensions for the generators and then pad
+        # The first dimension (number of generators) is not included in the padding
+        gen_pad = pad + [0, 0]
+        padded_generators = F.pad(self.generators, gen_pad, mode, value)
+
+        return Zonotope(padded_center, padded_generators)
+
+    def view(self, *shape):
+        # View the center
+        viewed_center = self.center.view(*shape)
+
+        # View each generator
+        generator_shape = [self.generators.shape[0]] + list(shape)
+        viewed_generators = self.generators.view(generator_shape)
+
+        return Zonotope(viewed_center, viewed_generators)
 
     def normalize(self, dim, p=2):
         return Zonotope(self.center / self.center.norm(p, dim=dim, keepdim=True),
@@ -75,7 +120,7 @@ class Zonotope:
 
     def min_diff(self, true_label):
         min_value_of_true_label = torch.full_like(self.center, (
-            self.center[true_label] - self.generators.abs().sum(dim=0)[true_label]).item())
+                self.center[true_label] - self.generators.abs().sum(dim=0)[true_label]).item())
         return min_value_of_true_label - (self.center + self.generators.abs().sum(dim=0))
 
     def label_loss(self, target_label):
