@@ -1,6 +1,6 @@
 from .ZonoConv2d import ZonoConv2d
 from .ZonoLinear import ZonoLinear
-from .ZonoReLU import ZonoReLU
+from .ZonoReLU import ZonoReLU, ZonoAlphaReLU
 from .ZonoFlatten import ZonoFlatten
 from .ZonoOnnxConstant import ZonoOnnxConstant
 from .ZonoOnnxTranspose import ZonoOnnxTranspose

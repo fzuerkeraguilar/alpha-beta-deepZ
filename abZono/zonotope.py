@@ -36,6 +36,11 @@ class Zonotope:
         if isinstance(other, Zonotope):
             return Zonotope(self.center * other.center, self.generators * other.center + other.generators * self.center)
         return Zonotope(self.center * other, self.generators * other)
+    
+    def __matmul__(self, other):
+        if isinstance(other, Zonotope):
+            return Zonotope(self.center @ other.center, self.generators @ other.center + other.generators @ self.center)
+        return Zonotope(self.center @ other, self.generators @ other)
 
     def __truediv__(self, other):
         if isinstance(other, Zonotope):
@@ -125,6 +130,24 @@ class Zonotope:
 
     def label_loss(self, target_label):
         return torch.clamp(self.min_diff(target_label), min=0).sum()
+    
+    def vnnlib_loss(self, property):
+        # Selects the outputs that are relevant for the property
+        var_matrix = property[0].T
+        var_matrix = torch.tensor(var_matrix, dtype=torch.float32)
+        # Upper bounds for the outputs that are relevant for the property
+        u = property[1]
+        u = torch.tensor(u, dtype=torch.float32)
+
+        # Select the generators that are relevant for the property
+        property_zonotope = self @ var_matrix
+        # Calculate the lower bounds for the relevant generators
+        l = property_zonotope.center - property_zonotope.generators.abs().sum(dim=0)
+
+        # Calculate the loss
+        return torch.clamp(u - l, min=0).sum()
+
+
 
     def to_device(self, device):
         self.center = self.center.to(device)
