@@ -4,3 +4,6 @@
 [submodule "test/vnncomp2023_benchmarks"]
 	path = test/vnncomp2023_benchmarks
 	url = git@github.com:ChristopherBrix/vnncomp2023_benchmarks.git
+[submodule "test/vnncomp2022_benchmarks"]
+	path = test/vnncomp2022_benchmarks
+	url = git@github.com:ChristopherBrix/vnncomp2022_benchmarks.git

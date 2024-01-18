@@ -45,7 +45,8 @@ class ZonoAlphaReLU(nn.Module):
         else:
             where_crossing = torch.bitwise_and(l < 0, u > 0)
             initial_slope = u / (u - l)  # slope with minimal area
-            self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
+            if self.slope_param is None:
+                self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
             self.slope = torch.sigmoid(self.slope_param) * initial_slope
             new_generators = (torch.ones_like(self.slope) - self.slope) * u * 0.5 * where_crossing.float()
             if new_generators.dim() < x.generators.dim():
