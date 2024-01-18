@@ -47,16 +47,17 @@ class ZonoAlphaReLU(nn.Module):
             return Zonotope(torch.zeros_like(x.center), torch.zeros_like(x.generators))
         else:
             where_crossing = torch.bitwise_and(l < 0, u > 0)
+            where_smaller_zero = torch.bitwise_and(l < 0, u < 0)
+            where_greater_zero = torch.bitwise_and(l > 0, u > 0)
+
             initial_slope = u / (u - l)  # slope with minimal area
             if self.slope_param is None:
                 self.slope_param = nn.Parameter(torch.ones_like(initial_slope))
-            self.slope = torch.sigmoid(self.slope_param) * initial_slope
-            new_generators = (torch.ones_like(self.slope) - self.slope) * u * 0.5 * where_crossing.float()
-            if new_generators.dim() < x.generators.dim():
-                new_generators_unsqueezed = new_generators.unsqueeze(0)
-                print('unsqueezing')
-            else:
-                new_generators_unsqueezed = new_generators
-            return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
-                            torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
-                                       new_generators_unsqueezed)))
+            slope = torch.sigmoid(self.slope_param) * initial_slope
+            new_generators = (torch.ones_like(slope) - slope) * u * 0.5 * where_crossing.float()
+
+            new_center = torch.where(where_crossing, x.center * slope + new_generators, x.center)
+            new_center = torch.where(where_smaller_zero, torch.zeros_like(x.center), new_center)
+            new_center = torch.where(where_greater_zero, x.center, new_center)
+
+            return Zonotope(new_center, torch.cat((torch.where(where_crossing, x.generators * slope, x.generators), new_generators.unsqueeze(0))))
