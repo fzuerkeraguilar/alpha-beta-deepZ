@@ -1,5 +1,3 @@
-from audioop import avg
-import re
 import torch
 import torch.nn.functional as F
 
@@ -147,7 +145,14 @@ class Zonotope:
         # Calculate the loss
         return torch.clamp(u - l, min=0).sum()
 
-
+    def contains(self, other: 'Zonotope'):
+        return (self.lower_bound <= other.lower_bound).all() and (self.upper_bound >= other.upper_bound).all()
+    
+    def contains_point(self, point):
+        return (self.lower_bound <= point).all() and (self.upper_bound >= point).all()
+    
+    def random_point(self):
+        return torch.rand_like(self.center) * (self.upper_bound - self.lower_bound) + self.lower_bound
 
     def to_device(self, device):
         self.center = self.center.to(device)
@@ -164,6 +169,14 @@ class Zonotope:
         l = self.center - self.generators.abs().sum(dim=0)
         u = self.center + self.generators.abs().sum(dim=0)
         return u / (u - l)
+    
+    @property
+    def lower_bound(self):
+        return self.center - self.generators.abs().sum(dim=0)
+    
+    @property
+    def upper_bound(self):
+        return self.center + self.generators.abs().sum(dim=0)
 
     @property
     def shape(self):

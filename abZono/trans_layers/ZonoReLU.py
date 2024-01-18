@@ -25,8 +25,8 @@ class ZonoReLU(nn.Module):
                 new_generators_unsqueezed = new_generators.unsqueeze(0)
             else:
                 new_generators_unsqueezed = new_generators
-            return Zonotope(torch.where(where_crossing, x.center * self.slope + new_generators, x.center),
-                            torch.cat((torch.where(where_crossing, x.generators * self.slope, x.generators),
+            return Zonotope(torch.where(where_crossing, x.center * slope + new_generators, x.center),
+                            torch.cat((torch.where(where_crossing, x.generators * slope, x.generators),
                                         new_generators_unsqueezed)))
 
 class ZonoAlphaReLU(nn.Module):
