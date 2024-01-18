@@ -5,13 +5,31 @@ from abZono.example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 from abZono.utils import numpy_dtype_to_pytorch_dtype
 from onnx2torch import convert
 import copy
+import torch
 
-NETWORK_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx'
-SPEC_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib'
+NETWORK_PATH = './vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx'
+SPEC_PATH = './vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib'
 
 
 class TestZonotopePropagation(unittest.TestCase):
 
+    def test_center_propagation(self):
+        # Load the network and input zonotope
+        network = convert(NETWORK_PATH)
+
+        input_size, input_shape, output_size, output_shape, dtype = get_num_inputs_outputs(NETWORK_PATH)
+        dtype = numpy_dtype_to_pytorch_dtype(dtype)
+        spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
+        input_zonotope = Zonotope.from_vnnlib(spec[0][0], input_shape, dtype)
+
+        # Propagate the center of the input zonotope through the network
+        center_through_network = network(input_zonotope.center)
+        # Transform the network and propagate the zonotope
+        network_copy = copy.deepcopy(network)
+        output_zonotope = transform_network(network_copy)(input_zonotope)
+
+        # Check if the center of the output zonotope is contained in the propagated zonotope
+        self.assertTrue(output_zonotope.contains_point(center_through_network))
 
     def test_random_points_in_output_zonotope(self):
         # Load the network and input zonotope
@@ -64,6 +82,7 @@ class TestZonotopePropagation(unittest.TestCase):
         # Check if each transformed point is in the output zonotope
         for point in ten_random_points_through_network:
             self.assertTrue(output_zonotope.contains_point(point))
+
 
 if __name__ == '__main__':
     unittest.main()
