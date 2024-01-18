@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from zonotope import Zonotope
+from abZono.zonotope import Zonotope
 
 
 class ZonoAvgPool1d(nn.Module):

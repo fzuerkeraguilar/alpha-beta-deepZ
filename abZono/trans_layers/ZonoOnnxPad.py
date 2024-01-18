@@ -1,7 +1,7 @@
 import re
 import torch.nn as nn
 from onnx2torch.node_converters.pad import OnnxPadStatic, OnnxPadDynamic
-from zonotope import Zonotope
+from abZono.zonotope import Zonotope
 
 
 class ZonoOnnxPadStatic(nn.Module):

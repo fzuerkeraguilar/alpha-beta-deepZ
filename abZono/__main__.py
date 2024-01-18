@@ -1,12 +1,12 @@
 import argparse
 import logging
-from example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
+from .example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 import numpy as np
 import torch
-from zonotope import Zonotope
-from network_transformer import transform_network
+from abZono.zonotope import Zonotope
+from abZono.network_transformer import transform_network
 from onnx2torch import convert
-from utils import numpy_dtype_to_pytorch_dtype
+from .utils import numpy_dtype_to_pytorch_dtype
 
 parser = argparse.ArgumentParser(
     description='Neural Network Verification using Zonotope relaxation')

@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from zonotope import Zonotope
+from abZono.zonotope import Zonotope
 from onnx2torch.node_converters.binary_math_operations import OnnxBinaryMathOperation
 
 class ZonoOnnxBinaryMathOperation(nn.Module):

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from zonotope import Zonotope
+from abZono.zonotope import Zonotope
 
 
 class ZonoConv2d(nn.Module):

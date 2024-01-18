@@ -1,5 +1,5 @@
 import torch.nn as nn
-from zonotope import Zonotope
+from abZono.zonotope import Zonotope
 
 
 class ZonoFlatten(nn.Module):
