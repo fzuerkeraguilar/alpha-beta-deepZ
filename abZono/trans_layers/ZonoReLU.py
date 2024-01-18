@@ -9,8 +9,10 @@ class ZonoReLU(nn.Module):
         super().__init__()
 
     def forward(self, x: Zonotope):
-        l = x.center - x.generators.abs().sum(dim=0)
-        u = x.center + x.generators.abs().sum(dim=0)
+        gen_abs_sum = x.generators.abs().sum(dim=0)
+        l = x.center - gen_abs_sum
+        u = x.center + gen_abs_sum
+
         if torch.all(l > 0):
             return x
         elif torch.all(u < 0):
