@@ -8,6 +8,7 @@ abZono is a Python library for verfying properties of a neural network using the
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Usage](#usage)
+  - [Testing](#testing)
 
 ## Installation
 
@@ -35,4 +36,12 @@ gunzip test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlbi/prop_0_0.03.vnnlib
 
 ```bash
 python -m abZono --net test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx --spec test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib
+```
+
+## Testing
+
+Run unit tests with:
+
+```bash
+./run_unittest.sh
 ```

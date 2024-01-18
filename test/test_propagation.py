@@ -5,10 +5,14 @@ from abZono.example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 from abZono.utils import numpy_dtype_to_pytorch_dtype
 from onnx2torch import convert
 import copy
-import torch
+import os
 
-NETWORK_PATH = './vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx'
-SPEC_PATH = './vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib'
+NETWORK_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx' \
+    if os.path.exists('./test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx') \
+    else './vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx'
+SPEC_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib' \
+    if os.path.exists('./test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib') \
+    else './vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib'
 
 
 class TestZonotopePropagation(unittest.TestCase):
