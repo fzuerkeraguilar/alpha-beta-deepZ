@@ -60,11 +60,21 @@ def main():
 
     net = convert(args.net)
     logger.debug(net)
-    zono_net = transform_network(net, optimize_alpha=False)
+    zono_net = transform_network(net, optimize_alpha=True)
     logger.debug(zono_net)
     y = zono_net(x)
-    print(y)
-    print("Predicted Label: ", y.get_label())
+    optimizer = torch.optim.Adam(zono_net.parameters(), lr=0.01)
+
+    # Optimization loop
+    for i in range(100):
+        y = zono_net(x)
+        optimizer.zero_grad()
+        loss = y.vnnlib_loss(spec[0][1][0])
+        loss.backward(retain_graph=True)
+        optimizer.step()
+        print(loss.item())
+
+
 
 
 if __name__ == "__main__":
