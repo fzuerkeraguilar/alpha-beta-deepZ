@@ -30,22 +30,10 @@ class Zonotope:
     def __sub__(self, other):
         return Zonotope(self.center - other.center, self.generators - other.generators)
 
-    def __mul__(self, other):
-        if isinstance(other, Zonotope):
-            return Zonotope(self.center * other.center, self.generators * other.center + other.generators * self.center)
-        return Zonotope(self.center * other, self.generators * other)
-    
     def __matmul__(self, other):
         if isinstance(other, Zonotope):
             return Zonotope(self.center @ other.center, self.generators @ other.center + other.generators @ self.center)
         return Zonotope(self.center @ other, self.generators @ other)
-
-    def __truediv__(self, other):
-        if isinstance(other, Zonotope):
-            return Zonotope(self.center / other.center,
-                            (other.center * self.generators - self.center * other.generators) / (
-                                        other.center * other.center))
-        return Zonotope(self.center / other, self.generators / other)
 
     def reshape(self, *shape):
         # Reshape the center

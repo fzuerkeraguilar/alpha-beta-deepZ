@@ -15,9 +15,9 @@ class ZonoOnnxBinaryMathOperation(nn.Module):
         elif self.math_op_function == torch.sub:
             self.math_op_function = Zonotope.__sub__
         elif self.math_op_function == torch.mul:
-            self.math_op_function = Zonotope.__mul__
+            raise NotImplementedError("Multiplication is not supported")
         elif self.math_op_function == torch.div:
-            self.math_op_function = Zonotope.__truediv__ # TODO: implement _onnx_div
+            raise NotImplementedError("Division is not supported")
 
 
     def forward(self, x: Zonotope, y: Zonotope):
