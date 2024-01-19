@@ -41,8 +41,9 @@ class ZonoAlphaReLU(nn.Module):
         self.slope_param = nn.Parameter(torch.ones(shape)) if shape is not None else None
 
     def forward(self, x: Zonotope):
-        l = x.center - x.generators.abs().sum(dim=0)
-        u = x.center + x.generators.abs().sum(dim=0)
+        gen_abs_sum = x.generators.abs().sum(dim=0)
+        l = x.center - gen_abs_sum
+        u = x.center + gen_abs_sum
         if torch.all(l > 0):
             return x
         elif torch.all(u < 0):
