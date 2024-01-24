@@ -8,6 +8,7 @@ class ZonoFlatten(nn.Module):
         super().__init__()
         self.start_dim = layer.start_dim
         self.end_dim = layer.end_dim
+        self.__name__ = "ZonoFlatten"
 
     def forward(self, x: Zonotope):
         return x.flatten(self.start_dim, self.end_dim)

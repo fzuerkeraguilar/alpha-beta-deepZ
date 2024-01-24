@@ -24,7 +24,7 @@ class Zonotope:
             pad = [0, 0] * (len(other.generators.shape) - 1) + [0, self.generators.shape[0] - other.generators.shape[0]]
             padded_generators = F.pad(other.generators, pad)
             new_generators = self.generators + padded_generators
-            
+
         return Zonotope(new_center, new_generators)
 
     def __sub__(self, other):
@@ -72,8 +72,8 @@ class Zonotope:
 
         # Adjust the dimensions for the generators and then flatten
         # The first dimension (number of generators) is not included in the flattening
-        gen_start_dim = start_dim + 1 if start_dim != 0 else start_dim # TODO: check if this is correct
-        gen_end_dim = end_dim + 1 if end_dim != -1 else end_dim # TODO: check if this is correct
+        gen_start_dim = start_dim + 1 if start_dim != 0 else start_dim  # TODO: check if this is correct
+        gen_end_dim = end_dim + 1 if end_dim != -1 else end_dim  # TODO: check if this is correct
         flattened_generators = self.generators.flatten(
             gen_start_dim, gen_end_dim)
 
@@ -116,35 +116,32 @@ class Zonotope:
 
     def label_loss(self, target_label):
         return torch.clamp(self.min_diff(target_label), min=0).sum()
-    
-    def vnnlib_loss(self, property):
-        # Selects the outputs that are relevant for the property
-        var_matrix = property[0].T
-        var_matrix = torch.tensor(var_matrix, dtype=torch.float32)
-        # Upper bounds for the outputs that are relevant for the property
-        u = property[1]
-        u = torch.tensor(u, dtype=torch.float32)
 
-        # Select the generators that are relevant for the property
-        property_zonotope = self @ var_matrix
-        # Calculate the lower bounds for the relevant generators
-        l = property_zonotope.center - property_zonotope.generators.abs().sum(dim=0)
-
-        # Calculate the loss
-        return torch.clamp(u - l, min=0).sum()
+    # spec, provided as a list of pairs (mat, rhs), as in: mat * y <= rhs, where y is the output.
+    def vnnlib_loss(self, spec):
+        loss = torch.tensor(0.0, device=self.device)
+        for factor, rhs in spec:
+            positive_factor = torch.clamp(factor, min=0)
+            negative_factor = torch.clamp(factor, max=0)
+            loss += torch.sum(positive_factor * self.upper_bound - rhs)
+            loss += torch.sum(negative_factor * self.lower_bound - rhs)
+        return loss
 
     def contains(self, other: 'Zonotope'):
         return (self.lower_bound <= other.lower_bound).all() and (self.upper_bound >= other.upper_bound).all()
-    
+
     def contains_point(self, point):
         return (self.lower_bound <= point).all() and (self.upper_bound >= point).all()
-    
+
     def random_point(self):
         return torch.rand_like(self.center) * (self.upper_bound - self.lower_bound) + self.lower_bound
 
     def to_device(self, device):
         self.center = self.center.to(device)
         self.generators = self.generators.to(device)
+
+    def to(self, *args, **kwargs):
+        return Zonotope(self.center.to(*args, **kwargs), self.generators.to(*args, **kwargs))
 
     def size(self):
         return self.center.size()
@@ -157,11 +154,11 @@ class Zonotope:
         l = self.center - self.generators.abs().sum(dim=0)
         u = self.center + self.generators.abs().sum(dim=0)
         return u / (u - l)
-    
+
     @property
     def lower_bound(self):
         return self.center - self.generators.abs().sum(dim=0)
-    
+
     @property
     def upper_bound(self):
         return self.center + self.generators.abs().sum(dim=0)
@@ -184,6 +181,8 @@ class Zonotope:
 
         center = torch.tensor(centers, dtype=dtype).reshape(shape)
         generators = torch.tensor(generators, dtype=dtype).reshape(1, *shape)
+        center = center.clone().detach().requires_grad_(True)
+        generators = generators.clone().detach().requires_grad_(True)
         return Zonotope(center, generators)
 
     @staticmethod

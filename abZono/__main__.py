@@ -4,9 +4,10 @@ from .example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 import numpy as np
 import torch
 from abZono.zonotope import Zonotope
-from abZono.network_transformer import transform_network
+from abZono.network_transformer import transform_network_fx, transform_network
 from onnx2torch import convert
 from .utils import numpy_dtype_to_pytorch_dtype
+import csv
 
 parser = argparse.ArgumentParser(
     description='Neural Network Verification using Zonotope relaxation')
@@ -18,6 +19,7 @@ parser.add_argument('--center', type=str, metavar='N',
                     help='Path to center file')
 parser.add_argument('--epsilon', type=float, default=0.1, help="epsilon")
 parser.add_argument('--true-label', type=int, help="True label")
+parser.add_argument('--csv', type=str, help="instances.csv file")
 parser.add_argument('--cpu', action='store_true',
                     help='Use CPU instead of GPU')
 parser.add_argument('-d', '--debug', action='store_true', help="Debug mode")
@@ -34,7 +36,12 @@ def main():
         logging.basicConfig(level=logging.INFO)
     logger.debug(args)
 
-    if not args.spec:
+    device = 'cpu' if args.cpu or not torch.cuda.is_available() else 'cuda'
+    logger.debug("Using device: {}".format(device))
+
+    instances = []
+
+    if not args.spec and not args.center:
         if not (args.center and args.epsilon and args.true_label):
             raise Exception(
                 "Please provide either spec or center, epsilon and true label")
@@ -44,37 +51,59 @@ def main():
             epsilon = float(args.epsilon)
             true_label = int(args.true_label)
             x = Zonotope.from_l_inf(center, epsilon)
+            net = convert(args.net)
+    elif args.spec:
+        net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
+        instances.append((net, x, output_spec))
+    elif args.csv:
+        with open(args.csv, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                model_path = row[0]
+                input_spec_path = row[1]
+                timeout = row[2]
+
+                zono_net, input_zono, output_spec = load_net_and_input_zonotope(model_path, input_spec_path, device)
+                instances.append((zono_net, input_zono, output_spec))
     else:
-        input_size, input_shape, output_size, output_shape, dtype = get_num_inputs_outputs(
-            args.net)
-        logger.debug("Input size: {}, Output size: {}".format(
-            input_size, output_size))
-        logger.debug("Input shape: {}, Output shape: {}".format(
-            input_shape, output_shape))
-        dtype = numpy_dtype_to_pytorch_dtype(dtype)
-        logger.debug("Dtype: {}".format(dtype))
-        spec = read_vnnlib_simple(args.spec, input_size, output_size)
-        x = Zonotope.from_vnnlib(spec[0][0], input_shape, dtype)
+        raise Exception("Please provide either spec or center, epsilon and true label")
 
-    device = 'cpu'  # TODO: change to GPU
-
-    net = convert(args.net)
-    logger.debug(net)
-    zono_net = transform_network(net, optimize_alpha=True)
-    logger.debug(zono_net)
-    y = zono_net(x)
-    optimizer = torch.optim.Adam(zono_net.parameters(), lr=0.01)
-
-    # Optimization loop
-    for i in range(100):
+    for zono_net, x, output_spec in instances:
+        x.to(device)
+        zono_net.to(device)
         y = zono_net(x)
-        optimizer.zero_grad()
-        loss = y.vnnlib_loss(spec[0][1][0])
-        loss.backward(retain_graph=True)
-        optimizer.step()
-        print(loss.item())
+        optimizer = torch.optim.Adam(zono_net.parameters(), lr=0.01)
+
+        for i in range(10000):
+            optimizer.zero_grad()
+            y = zono_net(x)
+            loss = y.vnnlib_loss(output_spec)
+            loss.backward()
+            optimizer.step()
+            if i % 100 == 0:
+                print("Loss: {}".format(loss.item()))
 
 
+def load_net_and_input_zonotope(net_path, spec_path, device):
+    num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(
+        net_path)
+    torch_dtype = numpy_dtype_to_pytorch_dtype(inp_dtype)
+    torch_net = convert(net_path)
+    zono_net = transform_network(torch_net, optimize_alpha=True)
+
+    spec = read_vnnlib_simple(spec_path, num_inputs, num_outputs)
+    input_zono = Zonotope.from_vnnlib(spec[0][0], inp_shape, torch_dtype)
+
+    output_specs = spec[0][1]
+    output_tensors = []
+    # convert lists to tensors
+    for mat, rhs in output_specs:
+        factor_tensor = torch.from_numpy(mat).to(torch_dtype)
+        factor_tensor.requires_grad = True
+        rhs_tensor = torch.full(out_shape, rhs[0], dtype=torch_dtype)
+        rhs_tensor.requires_grad = True
+        output_tensors.append((factor_tensor, rhs_tensor))
+    return zono_net, input_zono, output_tensors
 
 
 if __name__ == "__main__":

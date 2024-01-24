@@ -7,6 +7,7 @@ class ZonoReLU(nn.Module):
 
     def __init__(self):
         super().__init__()
+        self.__name__ = "ZonoReLU"
 
     def forward(self, x: Zonotope):
         gen_abs_sum = x.generators.abs().sum(dim=0)
@@ -36,9 +37,11 @@ class ZonoReLU(nn.Module):
 
 class ZonoAlphaReLU(nn.Module):
 
-    def __init__(self, shape=None):
+    def __init__(self):
         super().__init__()
-        self.slope_param = nn.Parameter(torch.ones(shape)) if shape is not None else None
+        self.slope_param = None #nn.Parameter(torch.ones(shape))
+        #self.slope_param.to(device)
+        self.__name__ = "ZonoAlphaReLU"
 
     def forward(self, x: Zonotope):
         gen_abs_sum = x.generators.abs().sum(dim=0)
@@ -64,3 +67,7 @@ class ZonoAlphaReLU(nn.Module):
             new_center = torch.where(where_greater_zero, x.center, new_center)
 
             return Zonotope(new_center, torch.cat((torch.where(where_crossing, x.generators * slope, x.generators), new_generators.unsqueeze(0))))
+
+    def to(self, *args, **kwargs):
+        self.slope_param = self.slope_param.to(*args, **kwargs)
+        return self

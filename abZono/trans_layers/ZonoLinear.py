@@ -9,6 +9,7 @@ class ZonoLinear(nn.Module):
         super().__init__()
         self.weight = layer.weight.data
         self.bias = layer.bias.data if layer.bias is not None else None
+        self.__name__ = "ZonoLinear"
 
     def forward(self, x: Zonotope):
         return Zonotope(F.linear(x.center, self.weight, self.bias),

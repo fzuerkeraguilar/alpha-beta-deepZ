@@ -3,6 +3,7 @@ from abZono.network_transformer import transform_network
 from abZono.zonotope import Zonotope
 from abZono.example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 from abZono.utils import numpy_dtype_to_pytorch_dtype
+from abZono.network_transformer import transform_network_fx
 from onnx2torch import convert
 import copy
 import os
@@ -44,7 +45,7 @@ class TestZonotopePropagation(unittest.TestCase):
         spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
         input_zonotope = Zonotope.from_vnnlib(spec[0][0], input_shape, dtype)
 
-        ten_random_points = [input_zonotope.random_point() for _ in range(10)]
+        ten_random_points = [input_zonotope.random_point() for _ in range(100)]
 
         for point in ten_random_points:
             self.assertTrue(input_zonotope.contains_point(point))
@@ -70,7 +71,7 @@ class TestZonotopePropagation(unittest.TestCase):
         spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
         input_zonotope = Zonotope.from_vnnlib(spec[0][0], input_shape, dtype)
 
-        ten_random_points = [input_zonotope.random_point() for _ in range(10)]
+        ten_random_points = [input_zonotope.random_point() for _ in range(100)]
 
         for point in ten_random_points:
             self.assertTrue(input_zonotope.contains_point(point))
