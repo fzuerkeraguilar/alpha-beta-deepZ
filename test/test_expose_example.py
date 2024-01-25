@@ -1,18 +1,16 @@
 import unittest
 import torch
-import torch.fx as fx
 from networks.OneLinerReLU import ExposeNet
 from abZono import Zonotope
 from abZono import transform_network
-from abZono.network_transformer import transform_network_fx
 
 
 class TestExposeExample(unittest.TestCase):
+    
     def test_expose_example(self):
         x = Zonotope(torch.tensor([4.0, 3.0]), torch.tensor([[2.0, 1.0], [1.0, 2.0]]))
         net = ExposeNet()
-        graph_module = fx.symbolic_trace(net)
-        transformed_network = transform_network_fx(graph_module, torch.tensor([1.0, 1.0]), 'cpu')
+        transformed_network = transform_network(net)
         print(transformed_network)
         result = transformed_network(x)
         print(result)
