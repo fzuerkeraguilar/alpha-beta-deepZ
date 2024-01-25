@@ -13,6 +13,7 @@ class ZonoAvgPool1d(nn.Module):
         self.padding = layer.padding
         self.ceil_mode = layer.ceil_mode
         self.count_include_pad = layer.count_include_pad
+        self.__name__ = 'ZonoAvgPool1d'
 
     def forward(self, x: Zonotope):
         pooled_center = F.avg_pool1d(x.center, self.kernel_size, self.stride,
@@ -30,6 +31,7 @@ class ZonoAvgPool2d(nn.Module):
         self.padding = layer.padding
         self.ceil_mode = layer.ceil_mode
         self.count_include_pad = layer.count_include_pad
+        self.__name__ = 'ZonoAvgPool2d'
 
     def forward(self, x: Zonotope):
         pooled_center = F.avg_pool2d(x.center, self.kernel_size, self.stride,
@@ -47,6 +49,7 @@ class ZonoAvgPool3d(nn.Module):
             self.padding = layer.padding
             self.ceil_mode = layer.ceil_mode
             self.count_include_pad = layer.count_include_pad
+            self.__name__ = 'ZonoAvgPool3d'
     
         def forward(self, x: Zonotope):
             pooled_center = F.avg_pool3d(x.center, self.kernel_size, self.stride,

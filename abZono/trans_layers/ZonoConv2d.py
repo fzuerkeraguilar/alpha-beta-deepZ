@@ -14,6 +14,7 @@ class ZonoConv2d(nn.Module):
         self.padding = layer.padding
         self.dilation = layer.dilation
         self.groups = layer.groups
+        self.__name__ = 'ZonoConv2d'
 
     def forward(self, x: Zonotope):
         conv_center = F.conv2d(x.center, self.weight, self.bias,

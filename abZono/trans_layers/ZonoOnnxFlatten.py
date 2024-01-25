@@ -8,6 +8,7 @@ class ZonoOnnxFlatten(nn.Module):
     def __init__(self, layer: OnnxFlatten):
         super().__init__()
         self.axis = layer.axis
+        self.__name__ = "ZonoOnnxFlatten"
 
     def forward(self, x: Zonotope):
         x = x.flatten(end_dim=self.axis - 1)

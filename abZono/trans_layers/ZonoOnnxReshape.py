@@ -8,6 +8,7 @@ class ZonoOnnxReshape(nn.Module):
 
     def __init__(self, layer: OnnxReshape):
         super().__init__()
+        self.__name__ = "ZonoOnnxReshape"
 
     def forward(self, x: Zonotope, shape):
         if torch.any(shape == 0):

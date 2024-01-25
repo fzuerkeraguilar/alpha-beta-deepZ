@@ -7,6 +7,7 @@ class ZonoOnnxConstant(nn.Module):
     def __init__(self, layer: OnnxConstant):
         super().__init__()
         self.value = layer.value
+        self.__name__ = "ZonoOnnxConstant"
 
     def forward(self, *args, **kwargs):
         return self.value

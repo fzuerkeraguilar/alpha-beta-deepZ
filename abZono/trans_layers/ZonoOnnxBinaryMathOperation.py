@@ -7,6 +7,7 @@ class ZonoOnnxBinaryMathOperation(nn.Module):
     
     def __init__(self, layer: OnnxBinaryMathOperation):
         super().__init__()
+        self.__name__ = "ZonoOnnxBinaryMathOperation"
         self.broadcast = layer.broadcast
         self.axis = layer.axis
         self.math_op_function = layer.math_op_function

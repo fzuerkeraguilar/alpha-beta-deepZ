@@ -11,6 +11,7 @@ class ZonoOnnxPadStatic(nn.Module):
             self.mode = layer.mode
             self.value = layer.constant_value
             self.pads = layer.pads
+            self.__name__ = "ZonoOnnxPadStatic"
 
         def forward(self, x: Zonotope):
               return x.pad(self.pads, self.mode, self.value)
@@ -22,6 +23,7 @@ class ZonoOnnxPadDynamic(nn.Module):
             self.mode = layer.mode
             self.value = layer.value
             self.pads = layer.pads
+            self.__name__ = "ZonoOnnxPadDynamic"
 
         def forward(self, x: Zonotope):
               return x.pad(self.pads, self.mode, self.value)

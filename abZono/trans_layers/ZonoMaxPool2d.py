@@ -17,6 +17,7 @@ class ZonoMaxPool2d(nn.Module):
         self.padding = self._to_tuple(layer.padding)
         self.dilation = self._to_tuple(layer.dilation)
         self.ceil_mode = layer.ceil_mode
+        self.__name__ = 'ZonoMaxPool2d'
 
     def forward(self, x: Zonotope):
         # Apply max_pool2d to the center and each generator

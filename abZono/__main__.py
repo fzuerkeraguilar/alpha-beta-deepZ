@@ -71,22 +71,23 @@ def main():
     for zono_net, x, output_spec in instances:
         x.to(device)
         zono_net.to(device)
-        y = zono_net(x)
-        optimizer = torch.optim.Adam(zono_net.parameters(), lr=0.01)
+        train_network(zono_net, x, output_spec)
 
-        for i in range(10000):
-            optimizer.zero_grad()
-            y = zono_net(x)
-            loss = y.vnnlib_loss(output_spec)
-            loss.backward()
-            optimizer.step()
-            if i % 100 == 0:
-                print("Loss: {}".format(loss.item()))
+def train_network(net, x, output_spec):
+    y = net(x)
+    optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 
+    for i in range(10000):
+        optimizer.zero_grad()
+        y = net(x)
+        loss = y.vnnlib_loss(output_spec)
+        loss.backward()
+        optimizer.step()
+        if i % 100 == 0:
+            print("Loss: {}".format(loss.item()))
 
 def load_net_and_input_zonotope(net_path, spec_path, device):
-    num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(
-        net_path)
+    num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
     torch_dtype = numpy_dtype_to_pytorch_dtype(inp_dtype)
     torch_net = convert(net_path)
     zono_net = transform_network(torch_net, optimize_alpha=True)
@@ -95,14 +96,9 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
     input_zono = Zonotope.from_vnnlib(spec[0][0], inp_shape, torch_dtype)
 
     output_specs = spec[0][1]
-    output_tensors = []
-    # convert lists to tensors
-    for mat, rhs in output_specs:
-        factor_tensor = torch.from_numpy(mat).to(torch_dtype)
-        factor_tensor.requires_grad = True
-        rhs_tensor = torch.full(out_shape, rhs[0], dtype=torch_dtype)
-        rhs_tensor.requires_grad = True
-        output_tensors.append((factor_tensor, rhs_tensor))
+    output_tensors = [(torch.from_numpy(mat).to(torch_dtype).requires_grad_(), 
+                       torch.full(out_shape, rhs[0], dtype=torch_dtype).requires_grad_()) 
+                      for mat, rhs in output_specs]
     return zono_net, input_zono, output_tensors
 
 

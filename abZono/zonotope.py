@@ -1,14 +1,14 @@
 import torch
 import torch.nn.functional as F
-
+from typing import Tuple
 
 class Zonotope:
 
-    def __init__(self, center, generators):
+    def __init__(self, center: torch.Tensor, generators: torch.Tensor):
         # Center has the same shape as the original tensor
-        self.center = center
+        self.center: torch.Tensor = center
         # Generator has one more dimension than the input, the first dimension is the number of generators
-        self.generators = generators
+        self.generators: torch.Tensor = generators
 
     def __add__(self, other):
         new_center = self.center + other.center
@@ -121,17 +121,18 @@ class Zonotope:
     def vnnlib_loss(self, spec):
         loss = torch.tensor(0.0, device=self.device)
         for factor, rhs in spec:
-            positive_factor = torch.clamp(factor, min=0)
-            negative_factor = torch.clamp(factor, max=0)
-            loss += torch.sum(positive_factor * self.upper_bound - rhs)
-            loss += torch.sum(negative_factor * self.lower_bound - rhs)
+            positive_factors = torch.clamp(factor, min=0)
+            negative_factors = torch.clamp(factor, max=0)
+            loss += torch.sum(positive_factors * self.upper_bound - rhs)
+            loss += torch.sum(negative_factors * self.lower_bound - rhs)
         return loss
 
     def contains(self, other: 'Zonotope'):
         return (self.lower_bound <= other.lower_bound).all() and (self.upper_bound >= other.upper_bound).all()
 
     def contains_point(self, point):
-        return (self.lower_bound <= point).all() and (self.upper_bound >= point).all()
+        l, u = self.l_u_bound
+        return (l <= point).all() and (u >= point).all()
 
     def random_point(self):
         return torch.rand_like(self.center) * (self.upper_bound - self.lower_bound) + self.lower_bound
@@ -143,10 +144,8 @@ class Zonotope:
     def to(self, *args, **kwargs):
         return Zonotope(self.center.to(*args, **kwargs), self.generators.to(*args, **kwargs))
 
-    def size(self):
-        return self.center.size()
-
-    def get_label(self):
+    @property
+    def get_label(self) -> torch.Tensor:
         return torch.argmax(self.center + self.generators.abs().sum(dim=0))
 
     @property
@@ -156,23 +155,36 @@ class Zonotope:
         return u / (u - l)
 
     @property
-    def lower_bound(self):
+    def lower_bound(self) -> torch.Tensor:
         return self.center - self.generators.abs().sum(dim=0)
 
     @property
-    def upper_bound(self):
+    def upper_bound(self) -> torch.Tensor:
         return self.center + self.generators.abs().sum(dim=0)
+    
+    @property
+    def l_u_bound(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        gen_sum = self.generators.abs().sum(dim=0)
+        return self.center - gen_sum, self.center + gen_sum
 
     @property
-    def shape(self):
+    def dtype(self) -> torch.dtype:
+        return self.center.dtype
+
+    @property
+    def size(self) -> torch.Size:
+        return self.center.size()
+
+    @property
+    def shape(self) -> torch.Size:
         return self.center.shape
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
         return self.center.device
 
     @staticmethod
-    def from_vnnlib(l_u_list, shape, dtype):
+    def from_vnnlib(l_u_list, shape: torch.Size, dtype: torch.dtype):
         centers = []
         generators = []
         for l, u in l_u_list:
@@ -186,16 +198,16 @@ class Zonotope:
         return Zonotope(center, generators)
 
     @staticmethod
-    def from_l_inf(center, radius):
+    def from_l_inf(center: torch.Tensor, radius: float):
         return Zonotope(center, (torch.ones_like(center) * radius).unsqueeze(0))
 
     @staticmethod
-    def zeros_like(zonotope):
-        return Zonotope(torch.zeros_like(zonotope.center), torch.zeros_like(zonotope.generators).unsqueeze(0))
+    def zeros_like(other: 'Zonotope'):
+        return Zonotope(torch.zeros_like(other.center), torch.zeros_like(other.generators).unsqueeze(0))
 
     @staticmethod
-    def ones_like(zonotope):
-        return Zonotope(torch.ones_like(zonotope.center), torch.zeros_like(zonotope.generators).unsqueeze(0))
+    def ones_like(other: 'Zonotope'):
+        return Zonotope(torch.ones_like(other.center), torch.zeros_like(other.generators).unsqueeze(0))
 
     def __repr__(self):
         return "Zonotope(center={}, generators={})".format(self.center, self.generators)
