@@ -5,3 +5,4 @@ output
 *.pyc
 **/__pycache__/
 venv
+profile_results
