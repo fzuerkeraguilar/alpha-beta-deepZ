@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from typing import Tuple
 
+
 class Zonotope:
 
     def __init__(self, center: torch.Tensor, generators: torch.Tensor):
@@ -99,10 +100,6 @@ class Zonotope:
 
         return Zonotope(viewed_center, viewed_generators)
 
-    def normalize(self, dim, p=2):
-        return Zonotope(self.center / self.center.norm(p, dim=dim, keepdim=True),
-                        self.generators / self.center.norm(p, dim=dim, keepdim=True))
-
     def l_inf_norm(self):
         return self.generators.abs().sum(dim=0)
 
@@ -142,7 +139,9 @@ class Zonotope:
         self.generators = self.generators.to(device)
 
     def to(self, *args, **kwargs):
-        return Zonotope(self.center.to(*args, **kwargs), self.generators.to(*args, **kwargs))
+        self.center = self.center.to(*args, **kwargs)
+        self.generators = self.generators.to(*args, **kwargs)
+        return self
 
     @property
     def get_label(self) -> torch.Tensor:
@@ -161,7 +160,7 @@ class Zonotope:
     @property
     def upper_bound(self) -> torch.Tensor:
         return self.center + self.generators.abs().sum(dim=0)
-    
+
     @property
     def l_u_bound(self) -> Tuple[torch.Tensor, torch.Tensor]:
         gen_sum = self.generators.abs().sum(dim=0)
@@ -193,8 +192,6 @@ class Zonotope:
 
         center = torch.tensor(centers, dtype=dtype).reshape(shape)
         generators = torch.tensor(generators, dtype=dtype).reshape(1, *shape)
-        center = center.clone().detach().requires_grad_(True)
-        generators = generators.clone().detach().requires_grad_(True)
         return Zonotope(center, generators)
 
     @staticmethod

@@ -36,7 +36,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
     logger.debug(args)
 
-    device = 'cpu' if args.cpu or not torch.cuda.is_available() else 'cuda'
+    device = torch.device('cpu') if args.cpu or not torch.cuda.is_available() else torch.device('cuda')
     logger.debug("Using device: {}".format(device))
 
     instances = []
@@ -73,6 +73,7 @@ def main():
         zono_net.to(device)
         train_network(zono_net, x, output_spec)
 
+
 def train_network(net, x, output_spec):
     y = net(x)
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
@@ -85,19 +86,26 @@ def train_network(net, x, output_spec):
         optimizer.step()
         if i % 100 == 0:
             print("Loss: {}".format(loss.item()))
+        if loss.item() < 0.0001:
+            print("Verified!")
+            print("Final loss: {}".format(loss.item()))
+            print("Iterations: {}".format(i))
+            break
+
 
 def load_net_and_input_zonotope(net_path, spec_path, device):
     num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
     torch_dtype = numpy_dtype_to_pytorch_dtype(inp_dtype)
     torch_net = convert(net_path)
-    zono_net = transform_network(torch_net, optimize_alpha=True)
+    input_tensor = torch.randn(inp_shape, dtype=torch_dtype)
+    zono_net = transform_network_fx(torch_net, input_tensor, optimize_alpha=True)
 
     spec = read_vnnlib_simple(spec_path, num_inputs, num_outputs)
     input_zono = Zonotope.from_vnnlib(spec[0][0], inp_shape, torch_dtype)
 
     output_specs = spec[0][1]
-    output_tensors = [(torch.from_numpy(mat).to(torch_dtype).requires_grad_(), 
-                       torch.full(out_shape, rhs[0], dtype=torch_dtype).requires_grad_()) 
+    output_tensors = [(torch.from_numpy(mat).to(device=device, dtype=torch_dtype),
+                       torch.full(out_shape, rhs[0], dtype=torch_dtype, device=device))
                       for mat, rhs in output_specs]
     return zono_net, input_zono, output_tensors
 

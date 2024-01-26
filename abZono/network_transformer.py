@@ -80,14 +80,14 @@ class ShapeProp:
         return shapes
 
 
-def transform_layer(layer: nn.Module, optimize_alpha=False, optimize_beta=False):
+def transform_layer(layer: nn.Module, input_shape, optimize_alpha=False, optimize_beta=False):
     if isinstance(layer, nn.Conv2d):
         return ZonoConv2d(layer)
     elif isinstance(layer, nn.Linear):
         return ZonoLinear(layer)
     elif isinstance(layer, nn.ReLU):
         if optimize_alpha:
-            return ZonoAlphaReLU()
+            return ZonoAlphaReLU(input_shape)
         else:
             return ZonoReLU()
     elif isinstance(layer, nn.Flatten):
@@ -126,8 +126,8 @@ def transform_network(network: nn.Module, optimize_alpha=False, optimize_beta=Fa
     return transform_layer(network, optimize_alpha, optimize_beta)
 
 
-def transform_network_fx(network: torch.fx.GraphModule, input, device, optimize_alpha=False, optimize_beta=False):
-    shapes = ShapeProp(network).propagate(input)
+def transform_network_fx(network: torch.fx.GraphModule, input_tensor: torch.Tensor, optimize_alpha=False, optimize_beta=False):
+    shapes = ShapeProp(network).propagate(input_tensor)
     new_modules = {}
     for node in network.graph.nodes:
         if node.op == 'call_module':
@@ -143,6 +143,7 @@ def transform_network_fx(network: torch.fx.GraphModule, input, device, optimize_
     for name, module in new_modules.items():
         network.add_module(name, module)
 
+    network.delete_all_unused_submodules()
     network.graph.lint()
     network.recompile()
     return network

@@ -53,7 +53,7 @@ class TestZonotopePropagation(unittest.TestCase):
         network_copy = copy.deepcopy(network)
 
         # Transform the network
-        output_zonotope = transform_network(network_copy)(input_zonotope)
+        output_zonotope = transform_network_fx(network_copy, input_zonotope.center)(input_zonotope)
 
         # Select 10 random points from the input zonotope
         ten_random_points_through_network = [network(point) for point in ten_random_points]
@@ -79,7 +79,7 @@ class TestZonotopePropagation(unittest.TestCase):
         network_copy = copy.deepcopy(network)
 
         # Transform the network
-        output_zonotope = transform_network(network_copy, optimize_alpha=True)(input_zonotope)
+        output_zonotope = transform_network_fx(network_copy, input_zonotope.center, optimize_alpha=True)(input_zonotope)
 
         # Select 10 random points from the input zonotope
         ten_random_points_through_network = [network(point) for point in ten_random_points]

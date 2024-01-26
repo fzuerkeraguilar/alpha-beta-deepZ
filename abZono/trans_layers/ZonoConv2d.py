@@ -8,13 +8,16 @@ class ZonoConv2d(nn.Module):
 
     def __init__(self, layer: nn.Conv2d):
         super().__init__()
-        self.weight = layer.weight.data
-        self.bias = layer.bias.data if layer.bias is not None else None
+        self.register_buffer("weight", layer.weight.data)
+        if layer.bias is not None:
+            self.register_buffer("bias", layer.bias.data)
+        else:
+            self.bias = None
         self.stride = layer.stride
         self.padding = layer.padding
         self.dilation = layer.dilation
         self.groups = layer.groups
-        self.__name__ = 'ZonoConv2d'
+        self.__name__ = self.__class__.__name__
 
     def forward(self, x: Zonotope):
         conv_center = F.conv2d(x.center, self.weight, self.bias,
