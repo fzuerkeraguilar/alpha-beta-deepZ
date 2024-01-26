@@ -120,8 +120,9 @@ class Zonotope:
         for factor, rhs in spec:
             positive_factors = torch.clamp(factor, min=0)
             negative_factors = torch.clamp(factor, max=0)
-            loss += torch.sum(positive_factors * self.upper_bound - rhs)
-            loss += torch.sum(negative_factors * self.lower_bound - rhs)
+            l, u = self.l_u_bound
+            loss += torch.sum(positive_factors * u - rhs)
+            loss += torch.sum(negative_factors * l - rhs)
         return loss
 
     def contains(self, other: 'Zonotope'):
