@@ -45,7 +45,7 @@ class TestZonotopePropagation(unittest.TestCase):
         spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
         input_zonotope = Zonotope.from_vnnlib(spec[0][0], input_shape, dtype)
 
-        ten_random_points = [input_zonotope.random_point() for _ in range(100)]
+        ten_random_points = [input_zonotope.random_point() for _ in range(1000)]
 
         for point in ten_random_points:
             self.assertTrue(input_zonotope.contains_point(point))
@@ -71,7 +71,7 @@ class TestZonotopePropagation(unittest.TestCase):
         spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
         input_zonotope = Zonotope.from_vnnlib(spec[0][0], input_shape, dtype)
 
-        ten_random_points = [input_zonotope.random_point() for _ in range(100)]
+        ten_random_points = [input_zonotope.random_point() for _ in range(1000)]
 
         for point in ten_random_points:
             self.assertTrue(input_zonotope.contains_point(point))
