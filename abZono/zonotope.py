@@ -116,14 +116,21 @@ class Zonotope:
 
     # spec, provided as a list of pairs (mat, rhs), as in: mat * y <= rhs, where y is the output.
     def vnnlib_loss(self, spec):
-        loss = torch.tensor(0.0, device=self.device)
-        for factor, rhs in spec:
-            positive_factors = torch.clamp(factor, min=0)
-            negative_factors = torch.clamp(factor, max=0)
-            l, u = self.l_u_bound
-            loss += torch.sum(positive_factors * u - rhs)
-            loss += torch.sum(negative_factors * l - rhs)
-        return loss
+        # Extracting factors and rhs_values from spec
+        factors, rhs_values = spec
+
+        # Calculating positive and negative factors
+        positive_factors = torch.clamp(factors, min=0)
+        negative_factors = torch.clamp(factors, max=0)
+
+        # Retrieving l and u bounds
+        l, u = self.l_u_bound
+
+        # Broadcasting l and u if necessary to match the dimensions of factors
+        # This is under the assumption that l and u are either scalars or have dimensions compatible with broadcasting
+        # Adjust this part if l and u have different dimensions that are not compatible with factors
+        loss = torch.sum(positive_factors * u - rhs_values, dim=1) + torch.sum(negative_factors * l - rhs_values, dim=1)
+        return torch.sum(loss)
 
     def contains(self, other: 'Zonotope'):
         return (self.lower_bound <= other.lower_bound).all() and (self.upper_bound >= other.upper_bound).all()

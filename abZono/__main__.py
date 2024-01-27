@@ -107,6 +107,11 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
     output_tensors = [(torch.from_numpy(mat).to(device=device, dtype=torch_dtype),
                        torch.full(out_shape, rhs[0], dtype=torch_dtype, device=device))
                       for mat, rhs in output_specs]
+    
+    factors, rhs_values = zip(*output_tensors)
+    factors = torch.stack(factors, dim=0)
+    rhs_values = torch.stack(rhs_values, dim=0)
+    output_tensors = factors, rhs_values
     return zono_net, input_zono, output_tensors
 
 
