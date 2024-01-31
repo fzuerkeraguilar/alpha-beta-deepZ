@@ -53,7 +53,6 @@ class ZonoAlphaReLU(nn.Module):
             where_smaller_zero = torch.bitwise_and(l < 0, u < 0)
             where_greater_zero = torch.bitwise_and(l > 0, u > 0)
 
-            initial_slope = u / (u - l)  # slope with minimal area
             slope = self.slope_param.clamp(0, 1)
             new_generators = - slope * l * 0.5 * where_crossing.float()
 
