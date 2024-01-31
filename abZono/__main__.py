@@ -56,7 +56,7 @@ def main():
             net = convert(args.net)
     elif args.spec:
         net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
-        instances.append((net, x, output_spec))
+        instances.append((args.net, args.spec, net, x, output_spec))
     elif args.csv:
         with open(args.csv, 'r') as f:
             # Get dir of csv file
@@ -69,20 +69,21 @@ def main():
                 timeout = row[2]
 
                 zono_net, input_zono, output_spec = load_net_and_input_zonotope(model_path, input_spec_path, device)
-                instances.append((zono_net, input_zono, output_spec))
+                instances.append((model_path, input_spec_path, zono_net, input_zono, output_spec))
     else:
         raise Exception("Please provide either spec or center, epsilon and true label")
     
     verified_instances = 0
 
-    for zono_net, x, output_spec in instances:
-        start_time = time.perf_counter_ns()
+    for model_path, input_spec_path, zono_net, x, output_spec in instances:
+        print("Verifying network: {} with input spec: {}".format(model_path, input_spec_path))
+        start_time = time.perf_counter()
         x.to(device)
         zono_net.to(device)
         if train_network(zono_net, x, output_spec):
             verified_instances += 1
-        end_time = time.perf_counter_ns()
-        print("Time: {}".format((end_time - start_time) / 1000000000))
+        end_time = time.perf_counter()
+        print("Time: {}".format(end_time - start_time))
     print("Verified instances: {}".format(verified_instances))
     print("Total instances: {}".format(len(instances)))
     print("Verified ratio: {}".format(verified_instances / len(instances)))
@@ -96,14 +97,12 @@ def train_network(net, x, output_spec):
         loss = y.vnnlib_loss(output_spec)
         loss.backward()
         optimizer.step()
-        if i % 1000 == 0:
-            print("Loss: {}".format(loss.item()))
         if loss.item() < 0.0001:
             print("Verified!")
             print("Final loss: {}".format(loss.item()))
             print("Iterations: {}".format(i))
             return True
-    print("Could not verify")
+    print("Could not verify. Final loss: {}".format(loss.item()))
     return False
 
 
