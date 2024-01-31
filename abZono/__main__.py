@@ -8,11 +8,13 @@ from abZono.network_transformer import transform_network_fx, transform_network
 from onnx2torch import convert
 from .utils import numpy_dtype_to_pytorch_dtype
 import csv
+import os
+import time
 
 parser = argparse.ArgumentParser(
     description='Neural Network Verification using Zonotope relaxation')
 parser.add_argument('--net', type=str, metavar='N',
-                    help='Path to onnx file', required=True)
+                    help='Path to onnx file')
 parser.add_argument('--spec', type=str, metavar='N',
                     help='Path to vnnlib file')
 parser.add_argument('--center', type=str, metavar='N',
@@ -41,7 +43,7 @@ def main():
 
     instances = []
 
-    if not args.spec and not args.center:
+    if not args.spec and not args.csv:
         if not (args.center and args.epsilon and args.true_label):
             raise Exception(
                 "Please provide either spec or center, epsilon and true label")
@@ -57,25 +59,35 @@ def main():
         instances.append((net, x, output_spec))
     elif args.csv:
         with open(args.csv, 'r') as f:
+            # Get dir of csv file
+            csv_dir = os.path.dirname(args.csv)
+
             reader = csv.reader(f)
             for row in reader:
-                model_path = row[0]
-                input_spec_path = row[1]
+                model_path = os.path.join(csv_dir, row[0])
+                input_spec_path = os.path.join(csv_dir, row[1])
                 timeout = row[2]
 
                 zono_net, input_zono, output_spec = load_net_and_input_zonotope(model_path, input_spec_path, device)
                 instances.append((zono_net, input_zono, output_spec))
     else:
         raise Exception("Please provide either spec or center, epsilon and true label")
+    
+    verified_instances = 0
 
     for zono_net, x, output_spec in instances:
+        start_time = time.perf_counter_ns()
         x.to(device)
         zono_net.to(device)
-        train_network(zono_net, x, output_spec)
-
+        if train_network(zono_net, x, output_spec):
+            verified_instances += 1
+        end_time = time.perf_counter_ns()
+        print("Time: {}".format((end_time - start_time) / 1000000000))
+    print("Verified instances: {}".format(verified_instances))
+    print("Total instances: {}".format(len(instances)))
+    print("Verified ratio: {}".format(verified_instances / len(instances)))
 
 def train_network(net, x, output_spec):
-    y = net(x)
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 
     for i in range(10000):
@@ -84,13 +96,15 @@ def train_network(net, x, output_spec):
         loss = y.vnnlib_loss(output_spec)
         loss.backward()
         optimizer.step()
-        if i % 100 == 0:
+        if i % 1000 == 0:
             print("Loss: {}".format(loss.item()))
         if loss.item() < 0.0001:
             print("Verified!")
             print("Final loss: {}".format(loss.item()))
             print("Iterations: {}".format(i))
-            break
+            return True
+    print("Could not verify")
+    return False
 
 
 def load_net_and_input_zonotope(net_path, spec_path, device):

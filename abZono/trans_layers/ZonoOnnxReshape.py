@@ -14,4 +14,4 @@ class ZonoOnnxReshape(nn.Module):
         if torch.any(shape == 0):
             shape = [x.shape[i] if dim_size ==
                      0 else dim_size for i, dim_size in enumerate(shape)]
-        return x.reshape(torch.Size(shape))
+        return x.reshape(shape)
