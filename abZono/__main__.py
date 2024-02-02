@@ -72,7 +72,7 @@ def main():
                 instances.append((model_path, input_spec_path, zono_net, input_zono, output_spec))
     else:
         raise Exception("Please provide either spec or center, epsilon and true label")
-    
+
     verified_instances = 0
 
     for model_path, input_spec_path, zono_net, x, output_spec in instances:
@@ -88,6 +88,7 @@ def main():
     print("Total instances: {}".format(len(instances)))
     print("Verified ratio: {}".format(verified_instances / len(instances)))
 
+
 def train_network(net, x, output_spec):
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 
@@ -97,6 +98,8 @@ def train_network(net, x, output_spec):
         loss = y.vnnlib_loss(output_spec)
         loss.backward()
         optimizer.step()
+        if i % 1000 == 0:
+            print("Loss: {}".format(loss))
         if loss.item() < 0.0001:
             print("Verified!")
             print("Final loss: {}".format(loss.item()))
@@ -120,7 +123,7 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
     output_tensors = [(torch.from_numpy(mat).to(device=device, dtype=torch_dtype),
                        torch.full(out_shape, rhs[0], dtype=torch_dtype, device=device))
                       for mat, rhs in output_specs]
-    
+
     factors, rhs_values = zip(*output_tensors)
     factors = torch.stack(factors, dim=0)
     rhs_values = torch.stack(rhs_values, dim=0)

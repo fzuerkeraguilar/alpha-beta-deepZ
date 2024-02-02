@@ -73,10 +73,9 @@ class Zonotope:
 
         # Adjust the dimensions for the generators and then flatten
         # The first dimension (number of generators) is not included in the flattening
-        gen_start_dim = start_dim + 1 if start_dim != 0 else start_dim  # TODO: check if this is correct
-        gen_end_dim = end_dim + 1 if end_dim != -1 else end_dim  # TODO: check if this is correct
+        gen_start_dim = start_dim + 1
         flattened_generators = self.generators.flatten(
-            gen_start_dim, gen_end_dim)
+            gen_start_dim, end_dim)
 
         return Zonotope(flattened_center, flattened_generators)
 
@@ -114,22 +113,16 @@ class Zonotope:
     def label_loss(self, target_label):
         return torch.clamp(self.min_diff(target_label), min=0).sum()
 
-    # spec, provided as a list of pairs (mat, rhs), as in: mat * y <= rhs, where y is the output.
+    # spec, provided as a pair (mat, rhs), as in: mat * y <= rhs, where y is the output.
     def vnnlib_loss(self, spec):
-        # Extracting factors and rhs_values from spec
         factors, rhs_values = spec
-
-        # Calculating positive and negative factors
         positive_factors = torch.clamp(factors, min=0)
         negative_factors = torch.clamp(factors, max=0)
 
         # Retrieving l and u bounds
         l, u = self.l_u_bound
 
-        # Broadcasting l and u if necessary to match the dimensions of factors
-        # This is under the assumption that l and u are either scalars or have dimensions compatible with broadcasting
-        # Adjust this part if l and u have different dimensions that are not compatible with factors
-        loss = torch.sum(positive_factors * u - rhs_values, dim=1) + torch.sum(negative_factors * l - rhs_values, dim=1)
+        loss = torch.sum(positive_factors * u - rhs_values, dim=0) + torch.sum(negative_factors * l - rhs_values, dim=0)
         return torch.sum(loss)
 
     def contains(self, other: 'Zonotope'):
