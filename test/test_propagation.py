@@ -47,7 +47,7 @@ class TestZonotopePropagation(unittest.TestCase):
         spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
         input_zonotope = Zonotope.from_vnnlib(spec[0][0], torch.Size(input_shape), dtype)
 
-        random_points = [input_zonotope.random_point() for _ in range(1000)]
+        random_points = [input_zonotope.random_point() for _ in range(10000)]
 
         for point in random_points:
             self.assertTrue(input_zonotope.contains_point(point))
@@ -58,62 +58,55 @@ class TestZonotopePropagation(unittest.TestCase):
         output_zonotope = transform_network_fx(network_copy, input_zonotope.center)(input_zonotope)
 
         # Select 10 random points from the input zonotope
-        ten_random_points_through_network = [network(point) for point in random_points]
+        points_through_original_network = [network(point) for point in random_points]
 
         # Check if each transformed point is in the output zonotope
-        for point in ten_random_points_through_network:
+        for point in points_through_original_network:
             self.assertTrue(output_zonotope.contains_point(point))
 
     def test_random_points_in_output_zonotope_with_alpha(self):
         # Load the network and input zonotope
-        network = convert(NETWORK_PATH)
+        original_network = convert(NETWORK_PATH)
+        network, x, _ = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
 
-        input_size, input_shape, output_size, output_shape, dtype = get_num_inputs_outputs(NETWORK_PATH)
-        dtype = numpy_dtype_to_pytorch_dtype(dtype)
-        spec = read_vnnlib_simple(SPEC_PATH, input_size, output_size)
-        input_zonotope = Zonotope.from_vnnlib(spec[0][0], torch.Size(input_shape), dtype)
-
-        random_points = [input_zonotope.random_point() for _ in range(1000)]
+        random_points = [x.random_point() for _ in range(10000)]
 
         for point in random_points:
-            self.assertTrue(input_zonotope.contains_point(point))
-
-        network_copy = copy.deepcopy(network)
+            self.assertTrue(x.contains_point(point))
 
         # Transform the network
-        output_zonotope = transform_network_fx(network_copy, input_zonotope.center, optimize_alpha=True)(input_zonotope)
+        y = network(x)
 
-        # Select 10 random points from the input zonotope
-        ten_random_points_through_network = [network(point) for point in random_points]
+        # Select random points from the input zonotope
+        points_through_original_network = [original_network(point) for point in random_points]
 
         # Check if each transformed point is in the output zonotope
-        for point in ten_random_points_through_network:
-            self.assertTrue(output_zonotope.contains_point(point))
+        for point in points_through_original_network:
+            self.assertTrue(y.contains_point(point))
 
     def test_fuzzy_propagation_after_optimization(self):
         original_network = convert(NETWORK_PATH)
         network, x, spec = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
 
-        random_points = [x.random_point() for _ in range(1000)]
+        random_points = [x.random_point() for _ in range(10000)]
         for point in random_points:
             self.assertTrue(x.contains_point(point))
-        
+
         points_through_original_network = [original_network(point) for point in random_points]
 
-        loss = 0  # Assign a default value to the 'loss' variable
         y = network(x)
-        
+
         optimizer = torch.optim.Adam(network.parameters(), lr=0.01)
-        for _ in range(10):
+        for _ in range(100):
             optimizer.zero_grad()
             y = network(x)
             loss = y.vnnlib_loss(spec)
             loss.backward()
             optimizer.step()
-            print(loss)
 
         for point in points_through_original_network:
             self.assertTrue(y.contains_point(point))
+
 
 if __name__ == '__main__':
     unittest.main()

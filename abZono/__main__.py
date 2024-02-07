@@ -43,18 +43,7 @@ def main():
 
     instances = []
 
-    if not args.spec and not args.csv:
-        if not (args.center and args.epsilon and args.true_label):
-            raise Exception(
-                "Please provide either spec or center, epsilon and true label")
-        else:
-            center = np.load(args.center)
-            center = torch.from_numpy(center).float()
-            epsilon = float(args.epsilon)
-            true_label = int(args.true_label)
-            x = Zonotope.from_l_inf(center, epsilon)
-            net = convert(args.net)
-    elif args.spec:
+    if args.spec:
         net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
         instances.append((args.net, args.spec, net, x, output_spec))
     elif args.csv:
@@ -71,7 +60,7 @@ def main():
                 zono_net, input_zono, output_spec = load_net_and_input_zonotope(model_path, input_spec_path, device)
                 instances.append((model_path, input_spec_path, zono_net, input_zono, output_spec))
     else:
-        raise Exception("Please provide either spec or center, epsilon and true label")
+        raise Exception("Please provide either csv file or spec file.")
 
     verified_instances = 0
 

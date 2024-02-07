@@ -10,29 +10,29 @@ class ZonoReLU(nn.Module):
         self.__name__ = "ZonoReLU"
 
     def forward(self, x: Zonotope):
-        gen_abs_sum = x.generators.abs().sum(dim=0)
-        l = x.center - gen_abs_sum
-        u = x.center + gen_abs_sum
+        l, u = x.l_u_bound
+        zero_tensor = torch.zeros_like(x.center)
+        negative_mask = (u < 0)
+        crossing_mask = (l < 0) & (u > 0)
 
-        if torch.all(l > 0):
-            return x
-        elif torch.all(u < 0):
-            return Zonotope(torch.zeros_like(x.center), torch.zeros_like(x.generators))
-        else:
-            where_crossing = torch.bitwise_and(l < 0, u > 0)
-            where_smaller_zero = torch.bitwise_and(l < 0, u < 0)
-            where_greater_zero = torch.bitwise_and(l > 0, u > 0)
+        slope = u / (u - l)
+        new_generator = -slope * l * 0.5 * crossing_mask.float()
 
-            initial_slope = u / (u - l)  # slope with minimal area
+        new_center = torch.where(crossing_mask, x.center * slope + new_generator, x.center)
+        new_center = torch.where(negative_mask, zero_tensor, new_center)
 
-            slope = initial_slope * where_crossing.float()
-            new_generators = -slope * l * 0.5
+        compressed_generator_indices = crossing_mask.nonzero(as_tuple=True)
+        num_activations = compressed_generator_indices[0].size(0)
+        do_not_repeat_other_dims = [1] * x.center.dim()
+        stacked_generator_indices = (torch.arange(num_activations), *compressed_generator_indices)
 
-            new_center = torch.where(where_crossing, x.center * slope + new_generators, x.center)
-            new_center = torch.where(where_smaller_zero, torch.zeros_like(x.center), new_center)
-            new_center = torch.where(where_greater_zero, x.center, new_center)
+        new_eps_terms = zero_tensor.unsqueeze(0).repeat(num_activations, *do_not_repeat_other_dims)
+        new_eps_terms[stacked_generator_indices] = new_generator[compressed_generator_indices]
 
-            return Zonotope(new_center, torch.cat((torch.where(where_crossing, x.generators * slope, x.generators), new_generators.unsqueeze(0))))
+        old_new_generators = torch.where(crossing_mask, x.generators * slope, x.generators)
+        old_new_generators = torch.where(negative_mask, torch.zeros_like(x.generators), old_new_generators)
+
+        return Zonotope(new_center, torch.cat((old_new_generators, new_eps_terms), dim=0))
 
 
 class ZonoAlphaReLU(nn.Module):

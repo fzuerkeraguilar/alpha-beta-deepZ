@@ -28,13 +28,16 @@ class Zonotope:
 
         return Zonotope(new_center, new_generators)
 
-    def __sub__(self, other):
-        return Zonotope(self.center - other.center, self.generators - other.generators)
+    def split(self, j: int):
+        jth_generator = self.generators[j]
 
-    def __matmul__(self, other):
-        if isinstance(other, Zonotope):
-            return Zonotope(self.center @ other.center, self.generators @ other.center + other.generators @ self.center)
-        return Zonotope(self.center @ other, self.generators @ other)
+        # Split the center
+        lower_center = self.center - (0.5 * jth_generator)
+        upper_center = self.center + (0.5 * jth_generator)
+
+        new_generators = torch.cat([self.generators[:j], self.generators[j] * 0.5, self.generators[j+1:]], dim=0)
+
+        return Zonotope(lower_center, new_generators), Zonotope(upper_center, new_generators)
 
     def reshape(self, *shape):
         # Reshape the center
@@ -61,8 +64,8 @@ class Zonotope:
         transposed_center = self.center.transpose(dim0, dim1)
 
         # Adjust the dimensions for the generators and then transpose
-        gen_dim0 = dim0 + 1  # if dim0 != 0 else dim0
-        gen_dim1 = dim1 + 1  # if dim1 != 0 else dim1
+        gen_dim0 = dim0 + 1 if dim0 < dim1 else dim0
+        gen_dim1 = dim1 + 1 if dim1 < dim0 else dim1
         transposed_generators = self.generators.transpose(gen_dim0, gen_dim1)
 
         return Zonotope(transposed_center, transposed_generators)
@@ -74,8 +77,7 @@ class Zonotope:
         # Adjust the dimensions for the generators and then flatten
         # The first dimension (number of generators) is not included in the flattening
         gen_start_dim = start_dim + 1
-        flattened_generators = self.generators.flatten(
-            gen_start_dim, end_dim)
+        flattened_generators = self.generators.flatten(gen_start_dim, end_dim)
 
         return Zonotope(flattened_center, flattened_generators)
 
@@ -99,20 +101,6 @@ class Zonotope:
 
         return Zonotope(viewed_center, viewed_generators)
 
-    def l_inf_norm(self):
-        return self.generators.abs().sum(dim=0)
-
-    def l_inf_loss(self, target):
-        return (self.l_inf_norm() - target.l_inf_norm()).abs().sum()
-
-    def min_diff(self, true_label):
-        min_value_of_true_label = torch.full_like(self.center, (
-                self.center[true_label] - self.generators.abs().sum(dim=0)[true_label]).item())
-        return min_value_of_true_label - (self.center + self.generators.abs().sum(dim=0))
-
-    def label_loss(self, target_label):
-        return torch.clamp(self.min_diff(target_label), min=0).sum()
-
     # spec, provided as a pair (mat, rhs), as in: mat * y <= rhs, where y is the output.
     def vnnlib_loss(self, spec):
         factors, rhs_values = spec
@@ -125,34 +113,46 @@ class Zonotope:
 
         return torch.clamp(lhs - rhs_values, min=0).sum()
 
-    def contains(self, other: 'Zonotope'):
-        return (self.lower_bound <= other.lower_bound).all() and (self.upper_bound >= other.upper_bound).all()
+    def contains_point(self, point: torch.Tensor):
+        # Flatten the center and the point to make the math easier
+        center_flat = self.center.flatten()
+        point_flat = point.flatten()
+        point_prime_flat = point_flat - center_flat
 
-    def contains_point(self, point):
-        l, u = self.l_u_bound
-        return (l <= point).all() and (u >= point).all()
+        generators_flat = self.generators.flatten(start_dim=1)
+
+        try:
+            coefficients = torch.linalg.lstsq(generators_flat.T, point_prime_flat.unsqueeze(1)).solution
+        except RuntimeError as e:
+            print(e)
+            return False
+        return torch.all(coefficients >= -1.0) and torch.all(coefficients <= 1.0)
 
     def random_point(self):
-        return torch.rand_like(self.center) * (self.upper_bound - self.lower_bound) + self.lower_bound
+        coeffs = 2.0 * torch.rand(len(self.generators)) - 1.0  # Scale to [-1, 1]
 
-    def to_device(self, device):
-        self.center = self.center.to(device)
-        self.generators = self.generators.to(device)
+        random_point = self.center.clone()
+        for i, generator in enumerate(self.generators):
+            random_point += coeffs[i] * generator
+
+        return random_point
 
     def to(self, *args, **kwargs):
         self.center = self.center.to(*args, **kwargs)
         self.generators = self.generators.to(*args, **kwargs)
         return self
 
-    @property
-    def get_label(self) -> torch.Tensor:
-        return torch.argmax(self.center + self.generators.abs().sum(dim=0))
+    def size(self) -> torch.Size:
+        return self.center.size()
 
     @property
-    def slope_threshold(self) -> torch.Tensor:
-        l = self.center - self.generators.abs().sum(dim=0)
-        u = self.center + self.generators.abs().sum(dim=0)
-        return u / (u - l)
+    def num_generators(self):
+        return self.generators.size(0)
+
+    @property
+    def without_zero_generators(self):
+        non_zero_generators = torch.cat([x.unsqueeze(0) for x in self.generators if x.abs().sum() > 0], dim=0)
+        return Zonotope(self.center, non_zero_generators)
 
     @property
     def lower_bound(self) -> torch.Tensor:
@@ -172,10 +172,6 @@ class Zonotope:
         return self.center.dtype
 
     @property
-    def size(self) -> torch.Size:
-        return self.center.size()
-
-    @property
     def shape(self) -> torch.Size:
         return self.center.shape
 
@@ -185,19 +181,20 @@ class Zonotope:
 
     @staticmethod
     def from_vnnlib(l_u_list, shape: torch.Size, dtype: torch.dtype):
-        centers = []
+        lower_limits = torch.tensor([x[0] for x in l_u_list], dtype=dtype)
+        upper_limits = torch.tensor([x[1] for x in l_u_list], dtype=dtype)
+
+        center = (upper_limits + lower_limits) / 2
+        center = center.reshape(shape)
+
         generators = []
-        for l, u in l_u_list:
-            centers.append((l + u) / 2)
-            generators.append((u - l) / 2)
 
-        center = torch.tensor(centers, dtype=dtype).reshape(shape)
-        generators = torch.tensor(generators, dtype=dtype).reshape(1, *shape)
-        return Zonotope(center, generators)
+        for i in range(len(lower_limits)):
+            generator = torch.zeros_like(center, dtype=dtype)
+            generator.view(-1)[i] = (upper_limits[i] - lower_limits[i]) / 2
+            generators.append(generator.reshape(shape))
 
-    @staticmethod
-    def from_l_inf(center: torch.Tensor, radius: float):
-        return Zonotope(center, (torch.ones_like(center) * radius).unsqueeze(0))
+        return Zonotope(center, torch.stack(generators))
 
     @staticmethod
     def zeros_like(other: 'Zonotope'):
