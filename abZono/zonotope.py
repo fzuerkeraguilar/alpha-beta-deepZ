@@ -110,8 +110,8 @@ class Zonotope:
         # Retrieving l and u bounds
         l, u = self.l_u_bound
         lhs = positive_factors * u + negative_factors * l
-
-        return torch.clamp(lhs - rhs_values, min=0).sum()
+        loss = (lhs - rhs_values).sum(dim=-1)
+        return torch.min(loss)
 
     def contains_point(self, point: torch.Tensor):
         # Flatten the center and the point to make the math easier
