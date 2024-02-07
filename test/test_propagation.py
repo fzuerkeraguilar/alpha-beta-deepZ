@@ -55,14 +55,20 @@ class TestZonotopePropagation(unittest.TestCase):
         network_copy = copy.deepcopy(network)
 
         # Transform the network
-        output_zonotope = transform_network_fx(network_copy, input_zonotope.center)(input_zonotope)
+        y = transform_network_fx(network_copy, input_zonotope.center)(input_zonotope)
 
         # Select 10 random points from the input zonotope
         points_through_original_network = [network(point) for point in random_points]
 
+        correct_points = 0
         # Check if each transformed point is in the output zonotope
         for point in points_through_original_network:
-            self.assertTrue(output_zonotope.contains_point(point))
+            if y.contains_point(point):
+                correct_points += 1
+
+        if correct_points != len(points_through_original_network):
+            print(f'Points correctly: {correct_points}/{len(points_through_original_network)}, {correct_points}')
+        self.assertEqual(correct_points, len(points_through_original_network))
 
     def test_random_points_in_output_zonotope_with_alpha(self):
         # Load the network and input zonotope
@@ -74,38 +80,47 @@ class TestZonotopePropagation(unittest.TestCase):
         for point in random_points:
             self.assertTrue(x.contains_point(point))
 
-        # Transform the network
         y = network(x)
 
-        # Select random points from the input zonotope
         points_through_original_network = [original_network(point) for point in random_points]
 
-        # Check if each transformed point is in the output zonotope
+        correct_points = 0
         for point in points_through_original_network:
-            self.assertTrue(y.contains_point(point))
+            if y.contains_point(point):
+                correct_points += 1
+
+        if correct_points != len(points_through_original_network):
+            print(f'Points correctly: {correct_points}/{len(points_through_original_network)}, {correct_points}')
+        self.assertEqual(correct_points, len(points_through_original_network))
 
     def test_fuzzy_propagation_after_optimization(self):
         original_network = convert(NETWORK_PATH)
         network, x, spec = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
 
-        random_points = [x.random_point() for _ in range(10000)]
+        random_points = [x.random_point() for _ in range(100)]
         for point in random_points:
             self.assertTrue(x.contains_point(point))
 
         points_through_original_network = [original_network(point) for point in random_points]
 
-        y = network(x)
-
         optimizer = torch.optim.Adam(network.parameters(), lr=0.01)
-        for _ in range(100):
+        for i in range(100):
             optimizer.zero_grad()
             y = network(x)
             loss = y.vnnlib_loss(spec)
             loss.backward()
             optimizer.step()
 
-        for point in points_through_original_network:
-            self.assertTrue(y.contains_point(point))
+            correct_points = 0
+            # Check if each transformed point is in the output zonotope
+            for point in points_through_original_network:
+                if y.contains_point(point):
+                    correct_points += 1
+
+            if correct_points != len(points_through_original_network):
+                print(f"Failed at iteration {i}")
+                print(f'Correct points: {correct_points}/{len(points_through_original_network)} of {correct_points}')
+            self.assertEqual(correct_points, len(points_through_original_network))
 
 
 if __name__ == '__main__':

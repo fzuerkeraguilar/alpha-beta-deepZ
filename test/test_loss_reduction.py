@@ -28,7 +28,6 @@ class TestLossReduction(unittest.TestCase):
             loss = y.vnnlib_loss(spec)
             loss.backward()
             optimizer.step()
-            print(loss)
 
         self.assertTrue(initial_loss > loss)
 
