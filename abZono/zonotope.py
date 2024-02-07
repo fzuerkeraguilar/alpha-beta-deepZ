@@ -121,9 +121,9 @@ class Zonotope:
 
         # Retrieving l and u bounds
         l, u = self.l_u_bound
+        lhs = positive_factors * u + negative_factors * l
 
-        loss = torch.sum(positive_factors * u - rhs_values, dim=0) + torch.sum(negative_factors * l - rhs_values, dim=0)
-        return torch.sum(loss)
+        return torch.clamp(lhs - rhs_values, min=0).sum()
 
     def contains(self, other: 'Zonotope'):
         return (self.lower_bound <= other.lower_bound).all() and (self.upper_bound >= other.upper_bound).all()
