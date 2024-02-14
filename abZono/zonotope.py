@@ -128,6 +128,9 @@ class Zonotope:
             return False
         return torch.all(coefficients >= -1.0) and torch.all(coefficients <= 1.0)
 
+    def contains_point_box(self, point: torch.Tensor):
+        return torch.all(point >= self.lower_bound) and torch.all(point <= self.upper_bound)
+
     def random_point(self):
         coeffs = 2.0 * torch.rand(len(self.generators)) - 1.0  # Scale to [-1, 1]
 

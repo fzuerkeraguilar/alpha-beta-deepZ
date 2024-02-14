@@ -40,6 +40,7 @@ class ZonoAlphaReLU(nn.Module):
     def __init__(self, input_shape: torch.Size):
         super().__init__()
         self.slope_param = nn.Parameter(torch.rand(input_shape))
+        self.first_run = True
         self.__name__ = self.__class__.__name__
 
     def forward(self, x: Zonotope):
@@ -48,8 +49,14 @@ class ZonoAlphaReLU(nn.Module):
         negative_mask = (u < 0)
         crossing_mask = (l < 0) & (u > 0)
 
+        threshold = u / (u - l)
+        if self.first_run:
+            self.first_run = False
+            self.slope_param.data = threshold
         slope = self.slope_param.clamp(0, 1)
-        new_generator = -slope * l * 0.5 * crossing_mask.float()
+        new_generator_0 = (1 - slope) * u * 0.5 * crossing_mask.float()
+        new_generator_1 = -slope * l * 0.5 * crossing_mask.float()
+        new_generator = torch.where(slope <= threshold, new_generator_0, new_generator_1)
 
         new_center = torch.where(crossing_mask, x.center * slope + new_generator, x.center)
         new_center = torch.where(negative_mask, zero_tensor, new_center)

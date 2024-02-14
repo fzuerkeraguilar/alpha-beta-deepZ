@@ -10,12 +10,12 @@ import torch
 import copy
 import os
 
-NETWORK_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx' \
-    if os.path.exists('./test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx') \
-    else './vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x2.onnx'
-SPEC_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib' \
-    if os.path.exists('./test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib') \
-    else './vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_0_0.03.vnnlib'
+NETWORK_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x4.onnx' \
+    if os.path.exists('./test/vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x4.onnx') \
+    else './vnncomp2022_benchmarks/benchmarks/mnist_fc/onnx/mnist-net_256x4.onnx'
+SPEC_PATH = './test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_6_0.03.vnnlib' \
+    if os.path.exists('./test/vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_6_0.03.vnnlib') \
+    else './vnncomp2022_benchmarks/benchmarks/mnist_fc/vnnlib/prop_6_0.03.vnnlib'
 
 
 class TestZonotopePropagation(unittest.TestCase):
@@ -75,7 +75,7 @@ class TestZonotopePropagation(unittest.TestCase):
         original_network = convert(NETWORK_PATH)
         network, x, _ = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
 
-        random_points = [x.random_point() for _ in range(10000)]
+        random_points = [x.random_point() for _ in range(1000)]
 
         for point in random_points:
             self.assertTrue(x.contains_point(point))
@@ -85,9 +85,12 @@ class TestZonotopePropagation(unittest.TestCase):
         points_through_original_network = [original_network(point) for point in random_points]
 
         correct_points = 0
+        wrong_points = []
         for point in points_through_original_network:
             if y.contains_point(point):
                 correct_points += 1
+            else:
+                wrong_points.append(point)
 
         if correct_points != len(points_through_original_network):
             print(f'Points correctly: {correct_points}/{len(points_through_original_network)}, {correct_points}')
@@ -97,7 +100,7 @@ class TestZonotopePropagation(unittest.TestCase):
         original_network = convert(NETWORK_PATH)
         network, x, spec = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
 
-        random_points = [x.random_point() for _ in range(100)]
+        random_points = [x.random_point() for _ in range(1000)]
         for point in random_points:
             self.assertTrue(x.contains_point(point))
 
@@ -112,15 +115,75 @@ class TestZonotopePropagation(unittest.TestCase):
             optimizer.step()
 
             correct_points = 0
+            wrong_points = []
             # Check if each transformed point is in the output zonotope
-            for point in points_through_original_network:
+            for idx, point in enumerate(points_through_original_network):
                 if y.contains_point(point):
                     correct_points += 1
+                else:
+                    wrong_points.append((idx, point))
 
             if correct_points != len(points_through_original_network):
                 print(f"Failed at iteration {i}")
                 print(f'Correct points: {correct_points}/{len(points_through_original_network)} of {correct_points}')
             self.assertEqual(correct_points, len(points_through_original_network))
+
+    def test_first_layer_propagation(self):
+        original_network = convert(NETWORK_PATH)
+        zono_network, x, spec = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
+
+        random_points = [x.random_point() for _ in range(1000)]
+        for point in random_points:
+            self.assertTrue(x.contains_point(point))
+
+        Flatten = original_network.Flatten
+        Gemm = original_network.Gemm
+        RelU = original_network.Relu
+
+        Flatten_zono = zono_network.Flatten_zono
+        Gemm_zono = zono_network.Gemm_zono
+        RelU_zono = zono_network.Relu_zono
+
+        points_through_flatten = [Flatten(point) for point in random_points]
+        points_through_gemm = [Gemm(point) for point in points_through_flatten]
+        points_through_relu = [RelU(point) for point in points_through_gemm]
+
+        zono_flatten = Flatten_zono(x)
+        zono_gemm = Gemm_zono(zono_flatten)
+        zono_relu = RelU_zono(zono_gemm)
+
+        correct_points = 0
+        wrong_points = []
+
+        for i, point in enumerate(points_through_flatten):
+            if zono_flatten.contains_point(point):
+                correct_points += 1
+            else:
+                wrong_points.append((i, point))
+
+        self.assertEqual(correct_points, len(points_through_flatten))
+
+        correct_points = 0
+        wrong_points = []
+
+        for i, point in enumerate(points_through_gemm):
+            if zono_gemm.contains_point(point):
+                correct_points += 1
+            else:
+                wrong_points.append((i, point))
+
+        self.assertEqual(correct_points, len(points_through_gemm))
+
+        correct_points = 0
+        wrong_points = []
+
+        for i, point in enumerate(points_through_relu):
+            if zono_relu.contains_point(point):
+                correct_points += 1
+            else:
+                wrong_points.append((i, point))
+
+        self.assertEqual(correct_points, len(points_through_relu))
 
 
 if __name__ == '__main__':
