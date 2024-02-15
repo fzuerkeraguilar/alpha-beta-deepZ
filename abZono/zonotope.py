@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 from typing import Tuple
+import scipy.optimize as opt
+import numpy as np
 
 
 class Zonotope:
@@ -114,19 +116,19 @@ class Zonotope:
         return torch.min(loss)
 
     def contains_point(self, point: torch.Tensor):
-        # Flatten the center and the point to make the math easier
-        center_flat = self.center.flatten()
-        point_flat = point.flatten()
-        point_prime_flat = point_flat - center_flat
+        point_prime_flat = (point - self.center).flatten()
+        generators_flat = self.generators.flatten(start_dim=1).detach().numpy()
 
-        generators_flat = self.generators.flatten(start_dim=1)
+        c = np.zeros(generators_flat.shape[0])
+        A_eq = generators_flat.T
+        b_eq = point_prime_flat.detach().numpy()
 
+        # Solve the linear programming problem
         try:
-            coefficients = torch.linalg.lstsq(generators_flat.T, point_prime_flat.unsqueeze(1)).solution
-        except RuntimeError as e:
-            print(e)
+            result = opt.linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=(-1, 1))
+        except ValueError:
             return False
-        return torch.all(coefficients >= -1.0) and torch.all(coefficients <= 1.0)
+        return result.success, result.x
 
     def contains_point_box(self, point: torch.Tensor):
         return torch.all(point >= self.lower_bound) and torch.all(point <= self.upper_bound)
