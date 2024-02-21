@@ -128,7 +128,7 @@ class Zonotope:
             result = opt.linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=(-1, 1))
         except ValueError:
             return False
-        return result.success, result.x
+        return result.success
 
     def contains_point_box(self, point: torch.Tensor):
         return torch.all(point >= self.lower_bound) and torch.all(point <= self.upper_bound)

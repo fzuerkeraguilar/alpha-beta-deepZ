@@ -139,29 +139,29 @@ class TestZonotopePropagation(unittest.TestCase):
         gemm_zono = zono_network.Gemm_zono(flatten_zono)
         self.assertTrue(torch.all(gemm_zono.center == gemm_points[0]))
         for i, point in enumerate(gemm_points):
-            self.assertTrue(gemm_zono.contains_point(point)[0])
+            self.assertTrue(gemm_zono.contains_point(point))
 
         relu_points = [original_network.Relu(point) for point in gemm_points]
         relu_zono = zono_network.Relu_zono(gemm_zono)
-        self.assertTrue(relu_zono.contains_point(relu_points[0])[0])
+        self.assertTrue(relu_zono.contains_point_box(relu_points[0]))
         for i, point in enumerate(relu_points):
-            self.assertTrue(relu_zono.contains_point(point)[0])
+            self.assertTrue(relu_zono.contains_point(point))
 
         gemm_1_points = [original_network.Gemm_1(point) for point in relu_points]
         gemm_1_zono = zono_network.Gemm_1_zono(relu_zono)
-        self.assertTrue(gemm_1_zono.contains_point(gemm_1_points[0])[0])
+        self.assertTrue(gemm_1_zono.contains_point_box(gemm_1_points[0]))
         for i, point in enumerate(gemm_1_points):
-            self.assertTrue(gemm_1_zono.contains_point(point)[0])
+            self.assertTrue(gemm_1_zono.contains_point(point))
 
         relu_1_points = [original_network.Relu_1(point) for point in gemm_1_points]
         relu_1_zono = zono_network.Relu_1_zono(gemm_1_zono)
         for i, point in enumerate(relu_1_points):
-            self.assertTrue(relu_1_zono.contains_point(point)[0])
+            self.assertTrue(relu_1_zono.contains_point(point))
 
         gemm_2_points = [original_network.Gemm_2(point) for point in relu_1_points]
         gemm_2_zono = zono_network.Gemm_2_zono(relu_1_zono)
         for i, point in enumerate(gemm_2_points):
-            self.assertTrue(gemm_2_zono.contains_point(point)[0])
+            self.assertTrue(gemm_2_zono.contains_point(point))
 
 
 if __name__ == '__main__':
