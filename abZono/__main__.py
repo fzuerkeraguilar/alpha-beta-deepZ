@@ -47,8 +47,7 @@ def main():
     instances = []
 
     if args.dataset:
-        net, 
-
+        instances = load_net_and_dataset(args.net, args.dataset, args.epsilon, device)
     elif args.spec:
         net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
         instances.append((args.net, args.spec, net, x, output_spec))
@@ -157,19 +156,19 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        #torchvision.transforms.Normalize((0.5, 0.5, 0.5), (1, 1, 1))
     ])
 
-    if dataset == "MNIST":
+    if dataset == "MNIST" or dataset == "mnist":
         dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
-    elif dataset == "CIFAR10":
+    elif dataset == "CIFAR10" or dataset == "cifar10":
         dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
     else:
         raise Exception("Dataset not supported")
 
     for images, label in dataset:
         images = images.to(device)
-        label = label.to(device)
+        label = torch.tensor([label], dtype=torch.long, device=device)
         zonotope = Zonotope.from_l_inf(images, epsilon)
         instances.append((zono_net, zonotope, label))
 

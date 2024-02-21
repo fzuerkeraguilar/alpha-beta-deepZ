@@ -30,6 +30,12 @@ class Zonotope:
 
         return Zonotope(new_center, new_generators)
 
+    def __sub__(self, other):
+        return Zonotope(self.center - other, self.generators)
+
+    def __div__(self, other):
+        return Zonotope(self.center / other, self.generators / other)
+
     def split(self, j: int):
         jth_generator = self.generators[j]
 
