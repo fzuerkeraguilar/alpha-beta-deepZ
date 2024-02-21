@@ -3,6 +3,8 @@ import logging
 from .example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 import numpy as np
 import torch
+import torchvision
+import torchvision.datasets as datasets
 from abZono.zonotope import Zonotope
 from abZono.network_transformer import transform_network_fx, transform_network
 from onnx2torch import convert
@@ -17,9 +19,10 @@ parser.add_argument('--net', type=str, metavar='N',
                     help='Path to onnx file')
 parser.add_argument('--spec', type=str, metavar='N',
                     help='Path to vnnlib file')
-parser.add_argument('--center', type=str, metavar='N',
-                    help='Path to center file')
+parser.add_argument('--zono-spec', type=str, metavar='N',
+                    help='Path to zono file')
 parser.add_argument('--epsilon', type=float, default=0.1, help="epsilon")
+parser.add_argument('--dataset', type=str, help="Dataset to use")
 parser.add_argument('--true-label', type=int, help="True label")
 parser.add_argument('--csv', type=str, help="instances.csv file")
 parser.add_argument('--cpu', action='store_true',
@@ -43,7 +46,10 @@ def main():
 
     instances = []
 
-    if args.spec:
+    if args.dataset:
+        net, 
+
+    elif args.spec:
         net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
         instances.append((args.net, args.spec, net, x, output_spec))
     elif args.csv:
@@ -58,19 +64,22 @@ def main():
                 timeout = row[2]
 
                 zono_net, input_zono, output_spec = load_net_and_input_zonotope(model_path, input_spec_path, device)
-                instances.append((model_path, input_spec_path, zono_net, input_zono, output_spec))
+                instances.append((zono_net, input_zono, output_spec))
     else:
         raise Exception("Please provide either csv file or spec file.")
 
     verified_instances = 0
 
-    for model_path, input_spec_path, zono_net, x, output_spec in instances:
-        print("Verifying network: {} with input spec: {}".format(model_path, input_spec_path))
+    for zono_net, x, output_spec in instances:
         start_time = time.perf_counter()
         x.to(device)
         zono_net.to(device)
-        if train_network(zono_net, x, output_spec):
-            verified_instances += 1
+        if args.dataset:
+            if label_train_network(zono_net, x, args.true_label):
+                verified_instances += 1
+        else:
+            if vnnlib_train_network(zono_net, x, output_spec):
+                verified_instances += 1
         end_time = time.perf_counter()
         print("Time: {}".format(end_time - start_time))
     print("Verified instances: {}".format(verified_instances))
@@ -78,7 +87,7 @@ def main():
     print("Verified ratio: {}".format(verified_instances / len(instances)))
 
 
-def train_network(net, x, output_spec):
+def vnnlib_train_network(net, x, output_spec):
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 
     for i in range(10000):
@@ -97,6 +106,24 @@ def train_network(net, x, output_spec):
     print("Could not verify. Final loss: {}".format(loss.item()))
     return False
 
+def label_train_network(net, x, true_label):
+    optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
+
+    for i in range(10000):
+        optimizer.zero_grad()
+        y = net(x)
+        loss = y.label_loss(true_label)
+        loss.backward()
+        optimizer.step()
+        if i % 1000 == 0:
+            print("Loss: {}".format(loss))
+        if loss.item() < 0.0001:
+            print("Verified!")
+            print("Final loss: {}".format(loss.item()))
+            print("Iterations: {}".format(i))
+            return True
+    print("Could not verify. Final loss: {}".format(loss.item()))
+    return False
 
 def load_net_and_input_zonotope(net_path, spec_path, device):
     num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
@@ -119,6 +146,34 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
     output_tensors = factors, rhs_values
     return zono_net, input_zono, output_tensors
 
+def load_net_and_dataset(net_path, dataset, epsilon, device):
+    num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
+    torch_dtype = numpy_dtype_to_pytorch_dtype(inp_dtype)
+    torch_net = convert(net_path)
+    input_tensor = torch.randn(inp_shape, dtype=torch_dtype)
+    zono_net = transform_network_fx(torch_net, input_tensor, optimize_alpha=True)
+
+    instances = []
+
+    transform = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    if dataset == "MNIST":
+        dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+    elif dataset == "CIFAR10":
+        dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    else:
+        raise Exception("Dataset not supported")
+
+    for images, label in dataset:
+        images = images.to(device)
+        label = label.to(device)
+        zonotope = Zonotope.from_l_inf(images, epsilon)
+        instances.append((zono_net, zonotope, label))
+
+    return instances
 
 if __name__ == "__main__":
     main()

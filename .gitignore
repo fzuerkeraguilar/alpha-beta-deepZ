@@ -6,3 +6,4 @@ output
 **/__pycache__/
 venv
 profile_results
+data

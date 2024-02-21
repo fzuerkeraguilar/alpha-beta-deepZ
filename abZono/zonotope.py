@@ -114,6 +114,16 @@ class Zonotope:
         lhs = positive_factors * u + negative_factors * l
         loss = (lhs - rhs_values).sum(dim=-1)
         return torch.min(loss)
+    
+    def lablel_loss(self, label):
+        l, u = self.l_u_bound
+        mask = torch.ones_like(l)
+        mask[label] = False
+        non_target = u[mask]
+
+        diff = non_target - l[label]
+        return F.relu(diff).sum()
+
 
     def contains_point(self, point: torch.Tensor):
         point_prime_flat = (point - self.center).flatten()
@@ -173,6 +183,10 @@ class Zonotope:
         return self.center - gen_sum, self.center + gen_sum
 
     @property
+    def predicted_label(self):
+        return torch.argmax(self.lower_bound)
+
+    @property
     def dtype(self) -> torch.dtype:
         return self.center.dtype
 
@@ -200,6 +214,13 @@ class Zonotope:
             generators.append(generator.reshape(shape))
 
         return Zonotope(center, torch.stack(generators))
+
+    @staticmethod
+    def from_l_inf(center: torch.Tensor, epsilon: float):
+        numel = center.numel()
+        generators = torch.eye(numel) * epsilon
+        generators = generators.reshape(numel, *center.shape)
+        return Zonotope(center, generators)
 
     @staticmethod
     def zeros_like(other: 'Zonotope'):
