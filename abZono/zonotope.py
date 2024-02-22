@@ -120,14 +120,14 @@ class Zonotope:
         lhs = positive_factors * u + negative_factors * l
         loss = (lhs - rhs_values).sum(dim=-1)
         return torch.min(loss)
-    
-    def lablel_loss(self, label):
+
+    def label_loss(self, label):
         l, u = self.l_u_bound
         mask = torch.ones_like(l)
-        mask[label] = False
-        non_target = u[mask]
+        mask[:, label] = 0
+        non_target = u[mask == 1]
 
-        diff = non_target - l[label]
+        diff = non_target - l[:, label]
         return F.relu(diff).sum()
 
 
@@ -222,7 +222,9 @@ class Zonotope:
         return Zonotope(center, torch.stack(generators))
 
     @staticmethod
-    def from_l_inf(center: torch.Tensor, epsilon: float):
+    def from_l_inf(center: torch.Tensor, epsilon: float, shape: torch.Size):
+        if shape:
+            center = center.reshape(shape)
         numel = center.numel()
         generators = torch.eye(numel) * epsilon
         generators = generators.reshape(numel, *center.shape)

@@ -1,10 +1,11 @@
 import torch.nn as nn
 import torch
 from abZono.zonotope import Zonotope
-from onnx2torch.node_converters.binary_math_operations import OnnxBinaryMathOperation
+from onnx2torch.node_converters.binary_math_operations import OnnxBinaryMathOperation, _onnx_div
+
 
 class ZonoOnnxBinaryMathOperation(nn.Module):
-    
+
     def __init__(self, layer: OnnxBinaryMathOperation):
         super().__init__()
         self.__name__ = "ZonoOnnxBinaryMathOperation"
@@ -17,9 +18,8 @@ class ZonoOnnxBinaryMathOperation(nn.Module):
             self.math_op_function = Zonotope.__sub__
         elif self.math_op_function == torch.mul:
             raise NotImplementedError("Multiplication is not supported")
-        elif self.math_op_function == torch.div:
+        elif self.math_op_function == _onnx_div:
             self.math_op_function = Zonotope.__div__
-
 
     def forward(self, x: Zonotope, y: Zonotope):
         if self.broadcast == 1 and self.axis is not None:

@@ -74,7 +74,7 @@ def main():
         x.to(device)
         zono_net.to(device)
         if args.dataset:
-            if label_train_network(zono_net, x, args.true_label):
+            if label_train_network(zono_net, x, output_spec):
                 verified_instances += 1
         else:
             if vnnlib_train_network(zono_net, x, output_spec):
@@ -105,24 +105,28 @@ def vnnlib_train_network(net, x, output_spec):
     print("Could not verify. Final loss: {}".format(loss.item()))
     return False
 
+
 def label_train_network(net, x, true_label):
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 
-    for i in range(10000):
+    for i in range(1000):
         optimizer.zero_grad()
         y = net(x)
         loss = y.label_loss(true_label)
         loss.backward()
         optimizer.step()
-        if i % 1000 == 0:
+        if i % 100 == 0:
             print("Loss: {}".format(loss))
         if loss.item() < 0.0001:
             print("Verified!")
             print("Final loss: {}".format(loss.item()))
             print("Iterations: {}".format(i))
+            print("Upper bound: {}".format(y.upper_bound))
+            print("Lower bound: {}".format(y.lower_bound))
             return True
     print("Could not verify. Final loss: {}".format(loss.item()))
     return False
+
 
 def load_net_and_input_zonotope(net_path, spec_path, device):
     num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
@@ -145,18 +149,19 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
     output_tensors = factors, rhs_values
     return zono_net, input_zono, output_tensors
 
+
 def load_net_and_dataset(net_path, dataset, epsilon, device):
     num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
     torch_dtype = numpy_dtype_to_pytorch_dtype(inp_dtype)
     torch_net = convert(net_path)
     input_tensor = torch.randn(inp_shape, dtype=torch_dtype)
     zono_net = transform_network_fx(torch_net, input_tensor, optimize_alpha=True)
-
+    zono_net.to(device)
     instances = []
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
-        #torchvision.transforms.Normalize((0.5, 0.5, 0.5), (1, 1, 1))
+        torchvision.transforms.Normalize((0.5), (1))
     ])
 
     if dataset == "MNIST" or dataset == "mnist":
@@ -167,12 +172,15 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
         raise Exception("Dataset not supported")
 
     for images, label in dataset:
+        if len(instances) > 100:
+            break
         images = images.to(device)
         label = torch.tensor([label], dtype=torch.long, device=device)
-        zonotope = Zonotope.from_l_inf(images, epsilon)
+        zonotope = Zonotope.from_l_inf(images, epsilon, shape=inp_shape)
         instances.append((zono_net, zonotope, label))
 
     return instances
+
 
 if __name__ == "__main__":
     main()
