@@ -115,8 +115,7 @@ def label_train_network(net, x, true_label):
         loss = y.label_loss(true_label)
         loss.backward()
         optimizer.step()
-        if i % 100 == 0:
-            print("Loss: {}".format(loss))
+        print("Loss: {}".format(loss))
         if loss.item() < 0.0001:
             print("Verified!")
             print("Final loss: {}".format(loss.item()))
