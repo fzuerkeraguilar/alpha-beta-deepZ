@@ -68,22 +68,31 @@ def main():
         raise Exception("Please provide either csv file or spec file.")
 
     verified_instances = 0
-
-    for zono_net, x, output_spec in instances:
+    sat = []
+    unsat = []
+    for i, (zono_net, x, output_spec) in enumerate(instances):
         start_time = time.perf_counter()
         x.to(device)
         zono_net.to(device)
         if args.dataset:
             if label_train_network(zono_net, x, output_spec):
+                sat += [i]
                 verified_instances += 1
+            else:
+                unsat += [i]
         else:
             if vnnlib_train_network(zono_net, x, output_spec):
+                sat += [i]
                 verified_instances += 1
+            else:
+                unsat += [i]
         end_time = time.perf_counter()
         print("Time: {}".format(end_time - start_time))
     print("Verified instances: {}".format(verified_instances))
     print("Total instances: {}".format(len(instances)))
     print("Verified ratio: {}".format(verified_instances / len(instances)))
+    print("Sat: {}".format(sat))
+    print("Unsat: {}".format(unsat))
 
 
 def vnnlib_train_network(net, x, output_spec):
@@ -98,11 +107,16 @@ def vnnlib_train_network(net, x, output_spec):
         if i % 1000 == 0:
             print("Loss: {}".format(loss))
         if loss.item() < 0.0001:
-            print("Verified!")
+            print("sat")
             print("Final loss: {}".format(loss.item()))
             print("Iterations: {}".format(i))
+            print("Upper bound: {}".format(y.upper_bound))
+            print("Lower bound: {}".format(y.lower_bound))
             return True
-    print("Could not verify. Final loss: {}".format(loss.item()))
+    print("unsat")
+    print("Final loss: {}".format(loss.item()))
+    print("Upper bound: {}".format(y.upper_bound))
+    print("Lower bound: {}".format(y.lower_bound))
     return False
 
 
@@ -115,7 +129,8 @@ def label_train_network(net, x, true_label):
         loss = y.label_loss(true_label)
         loss.backward()
         optimizer.step()
-        print("Loss: {}".format(loss))
+        if i % 10 == 0:
+            print("Loss: {}".format(loss))
         if loss.item() < 0.0001:
             print("Verified!")
             print("Final loss: {}".format(loss.item()))
@@ -124,6 +139,8 @@ def label_train_network(net, x, true_label):
             print("Lower bound: {}".format(y.lower_bound))
             return True
     print("Could not verify. Final loss: {}".format(loss.item()))
+    print("Upper bound: {}".format(y.upper_bound))
+    print("Lower bound: {}".format(y.lower_bound))
     return False
 
 
@@ -160,7 +177,7 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0.5), (1))
+        torchvision.transforms.Normalize((0.0), (1))
     ])
 
     if dataset == "MNIST" or dataset == "mnist":
@@ -171,11 +188,11 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
         raise Exception("Dataset not supported")
 
     for images, label in dataset:
-        if len(instances) > 100:
+        if len(instances) >= 100:
             break
         images = images.to(device)
         label = torch.tensor([label], dtype=torch.long, device=device)
-        zonotope = Zonotope.from_l_inf(images, epsilon, shape=inp_shape)
+        zonotope = Zonotope.from_l_inf(images, epsilon, shape=torch.Size(inp_shape))
         instances.append((zono_net, zonotope, label))
 
     return instances

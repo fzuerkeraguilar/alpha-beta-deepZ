@@ -91,22 +91,20 @@ class TestZonotopePropagation(unittest.TestCase):
         original_network = convert(NETWORK_PATH)
         network, x, spec = load_net_and_input_zonotope(NETWORK_PATH, SPEC_PATH, 'cpu')
 
-        random_points = [x.center] + [x.random_point() for _ in range(100)]
+        random_points = [x.center] + [x.random_point() for _ in range(1000)]
         for point in random_points:
             self.assertTrue(x.contains_point(point))
 
         points_through_original_network = [original_network(point) for point in random_points]
 
         optimizer = torch.optim.Adam(network.parameters(), lr=0.01)
-        for i in range(100):
+        for i in range(1000):
             optimizer.zero_grad()
             y = network(x)
             loss = y.vnnlib_loss(spec)
             loss.backward()
             optimizer.step()
 
-            print(f'Loss: {loss.item()}')
-            print(f'Iteration: {i}')
             correct_points = 0
             wrong_points = []
             # Check if each transformed point is in the output zonotope
@@ -143,13 +141,11 @@ class TestZonotopePropagation(unittest.TestCase):
 
         relu_points = [original_network.Relu(point) for point in gemm_points]
         relu_zono = zono_network.Relu_zono(gemm_zono)
-        self.assertTrue(relu_zono.contains_point_box(relu_points[0]))
         for i, point in enumerate(relu_points):
             self.assertTrue(relu_zono.contains_point(point))
 
         gemm_1_points = [original_network.Gemm_1(point) for point in relu_points]
         gemm_1_zono = zono_network.Gemm_1_zono(relu_zono)
-        self.assertTrue(gemm_1_zono.contains_point_box(gemm_1_points[0]))
         for i, point in enumerate(gemm_1_points):
             self.assertTrue(gemm_1_zono.contains_point(point))
 
@@ -163,6 +159,25 @@ class TestZonotopePropagation(unittest.TestCase):
         for i, point in enumerate(gemm_2_points):
             self.assertTrue(gemm_2_zono.contains_point(point))
 
+        relu_2_points = [original_network.Relu_2(point) for point in gemm_2_points]
+        relu_2_zono = zono_network.Relu_2_zono(gemm_2_zono)
+        for i, point in enumerate(relu_2_points):
+            self.assertTrue(relu_2_zono.contains_point(point))
+
+        gemm_3_points = [original_network.Gemm_3(point) for point in relu_2_points]
+        gemm_3_zono = zono_network.Gemm_3_zono(relu_2_zono)
+        for i, point in enumerate(gemm_3_points):
+            self.assertTrue(gemm_3_zono.contains_point(point))
+
+        relu_3_points = [original_network.Relu_3(point) for point in gemm_3_points]
+        relu_3_zono = zono_network.Relu_3_zono(gemm_3_zono)
+        for i, point in enumerate(relu_3_points):
+            self.assertTrue(relu_3_zono.contains_point(point))
+            
+        gemm_4_points = [original_network.Gemm_4(point) for point in relu_3_points]
+        gemm_4_zono = zono_network.Gemm_4_zono(relu_3_zono)
+        for i, point in enumerate(gemm_4_points):
+            self.assertTrue(gemm_4_zono.contains_point(point))
 
 if __name__ == '__main__':
     unittest.main()
