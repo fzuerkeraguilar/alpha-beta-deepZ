@@ -170,7 +170,7 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0.0), (1))
+        torchvision.transforms.Normalize((0.0,), (1,))
     ])
 
     if dataset == "MNIST" or dataset == "mnist":
