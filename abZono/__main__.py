@@ -74,18 +74,11 @@ def main():
         start_time = time.perf_counter()
         x.to(device)
         zono_net.to(device)
-        if args.dataset:
-            if label_train_network(zono_net, x, output_spec):
-                sat += [i]
-                verified_instances += 1
-            else:
-                unsat += [i]
+        if vnnlib_train_network(zono_net, x, output_spec):
+            sat += [i]
+            verified_instances += 1
         else:
-            if vnnlib_train_network(zono_net, x, output_spec):
-                sat += [i]
-                verified_instances += 1
-            else:
-                unsat += [i]
+            unsat += [i]
         end_time = time.perf_counter()
         print("Time: {}".format(end_time - start_time))
     print("Verified instances: {}".format(verified_instances))
@@ -98,13 +91,13 @@ def main():
 def vnnlib_train_network(net, x, output_spec):
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
 
-    for i in range(10000):
+    for i in range(1000):
         optimizer.zero_grad()
         y = net(x)
         loss = y.vnnlib_loss(output_spec)
         loss.backward()
         optimizer.step()
-        if i % 1000 == 0:
+        if i % 100 == 0:
             print("Loss: {}".format(loss))
         if loss.item() < 0.0001:
             print("sat")
@@ -156,13 +149,13 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
 
     output_specs = spec[0][1]
     output_tensors = [(torch.from_numpy(mat).to(device=device, dtype=torch_dtype),
-                       torch.full(out_shape, rhs[0], dtype=torch_dtype, device=device))
+                       torch.from_numpy(rhs).to(device=device, dtype=torch_dtype))
                       for mat, rhs in output_specs]
 
     factors, rhs_values = zip(*output_tensors)
     factors = torch.stack(factors, dim=0)
     rhs_values = torch.stack(rhs_values, dim=0)
-    output_tensors = factors, rhs_values
+    output_tensors = factors, rhs_values, True
     return zono_net, input_zono, output_tensors
 
 
@@ -191,9 +184,16 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
         if len(instances) >= 100:
             break
         images = images.to(device)
-        label = torch.tensor([label], dtype=torch.long, device=device)
+        output_matrix = []
+        for i in range(num_outputs):
+            zeros = torch.zeros(out_shape, device=device, dtype=torch_dtype)
+            zeros[:, label] = -1
+            zeros[:, i] = 1
+            output_matrix.append(zeros)
+        output_matrix = torch.stack(output_matrix, dim=0)
+        output_spec = (output_matrix, torch.zeros(num_outputs, device=device, dtype=torch_dtype), False)
         zonotope = Zonotope.from_l_inf(images, epsilon, shape=torch.Size(inp_shape))
-        instances.append((zono_net, zonotope, label))
+        instances.append((zono_net, zonotope, output_spec))
 
     return instances
 

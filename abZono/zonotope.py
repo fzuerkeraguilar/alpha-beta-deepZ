@@ -43,7 +43,7 @@ class Zonotope:
         lower_center = self.center - (0.5 * jth_generator)
         upper_center = self.center + (0.5 * jth_generator)
 
-        new_generators = torch.cat([self.generators[:j], self.generators[j] * 0.5, self.generators[j+1:]], dim=0)
+        new_generators = torch.cat([self.generators[:j], self.generators[j] * 0.5, self.generators[j + 1:]], dim=0)
 
         return Zonotope(lower_center, new_generators), Zonotope(upper_center, new_generators)
 
@@ -111,15 +111,17 @@ class Zonotope:
 
     # spec, provided as a pair (mat, rhs), as in: mat * y <= rhs, where y is the output.
     def vnnlib_loss(self, spec):
-        factors, rhs_values = spec
+        factors, rhs_values, disjunction = spec
         positive_factors = torch.clamp(factors, min=0)
         negative_factors = torch.clamp(factors, max=0)
 
         # Retrieving l and u bounds
         l, u = self.l_u_bound
         lhs = positive_factors * u + negative_factors * l
-        loss = (lhs - rhs_values).sum(dim=-1)
-        return torch.min(loss)
+        loss = lhs.sum(dim=-1) - rhs_values
+        if disjunction:
+            return torch.min(loss)  # Because disjunction
+        return torch.sum(loss)
 
     def label_loss(self, label):
         l, u = self.l_u_bound
@@ -129,7 +131,6 @@ class Zonotope:
 
         diff = non_target - l[:, label]
         return F.relu(diff).sum()
-
 
     def contains_point(self, point: torch.Tensor):
         point_prime_flat = (point - self.center).flatten()
