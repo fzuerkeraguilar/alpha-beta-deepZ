@@ -23,6 +23,7 @@ parser.add_argument('--zono-spec', type=str, metavar='N',
                     help='Path to zono file')
 parser.add_argument('--epsilon', type=float, default=0.1, help="epsilon")
 parser.add_argument('--dataset', type=str, help="Dataset to use")
+parser.add_argument('--subset', type=int, help="Subset of dataset to use")
 parser.add_argument('--true-label', type=int, help="True label")
 parser.add_argument('--csv', type=str, help="instances.csv file")
 parser.add_argument('--cpu', action='store_true',
@@ -47,7 +48,7 @@ def main():
     instances = []
 
     if args.dataset:
-        instances = load_net_and_dataset(args.net, args.dataset, args.epsilon, device)
+        instances = load_net_and_dataset(args.net, args.dataset, args.dataset ,args.epsilon, device)
     elif args.spec:
         net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
         instances.append((args.net, args.spec, net, x, output_spec))
@@ -159,7 +160,7 @@ def load_net_and_input_zonotope(net_path, spec_path, device):
     return zono_net, input_zono, output_tensors
 
 
-def load_net_and_dataset(net_path, dataset, epsilon, device):
+def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
     num_inputs, inp_shape, num_outputs, out_shape, inp_dtype = get_num_inputs_outputs(net_path)
     torch_dtype = numpy_dtype_to_pytorch_dtype(inp_dtype)
     torch_net = convert(net_path)
@@ -170,6 +171,8 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
+        torchvision.transforms.Lambda(lambda x: x * 255),
+        torchvision.transforms.Lambda(lambda x: x.round()),
         torchvision.transforms.Normalize((0.0,), (1,))
     ])
 
@@ -179,10 +182,15 @@ def load_net_and_dataset(net_path, dataset, epsilon, device):
         dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
     else:
         raise Exception("Dataset not supported")
+    
+    seleted_dataset = []
 
+    if subset:
+        for i in range(100):
+            seleted_dataset.append(dataset[i*subset])
+    else:
+        seleted_dataset = dataset
     for images, label in dataset:
-        if len(instances) >= 100:
-            break
         images = images.to(device)
         output_matrix = []
         for i in range(num_outputs):
