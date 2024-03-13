@@ -185,9 +185,9 @@ def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
     
     seleted_dataset = []
 
-    if subset:
-        for i in range(100):
-            seleted_dataset.append(dataset[subset*100 + i])
+    if subset is not None:
+        for i in range(1000):
+            seleted_dataset.append(dataset[subset*1000 + i])
     else:
         seleted_dataset = dataset
     for images, label in seleted_dataset:
