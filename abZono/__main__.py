@@ -71,7 +71,7 @@ def main():
     verified_instances = 0
     sat = []
     unsat = []
-    start_time = time.perf_counter()
+    total_start_time = time.perf_counter()
     for i, (zono_net, x, output_spec) in enumerate(instances):
         start_time = time.perf_counter()
         x.to(device)
@@ -83,8 +83,8 @@ def main():
             unsat += [i]
         end_time = time.perf_counter()
         print("Time: {}".format(end_time - start_time))
-    end_time = time.perf_counter()
-    print("Total time: {}".format(end_time - start_time))
+    total_end_time = time.perf_counter()
+    print("Total time: {}".format(total_end_time - total_start_time))
     print("Verified instances: {}".format(verified_instances))
     print("Total instances: {}".format(len(instances)))
     print("Verified ratio: {}".format(verified_instances / len(instances)))
