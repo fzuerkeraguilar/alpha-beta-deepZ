@@ -48,7 +48,7 @@ def main():
     instances = []
 
     if args.dataset:
-        instances = load_net_and_dataset(args.net, args.dataset, args.dataset ,args.epsilon, device)
+        instances = load_net_and_dataset(args.net, args.dataset, args.subset ,args.epsilon, device)
     elif args.spec:
         net, x, output_spec = load_net_and_input_zonotope(args.net, args.spec, device)
         instances.append((args.net, args.spec, net, x, output_spec))
@@ -187,10 +187,10 @@ def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
 
     if subset:
         for i in range(100):
-            seleted_dataset.append(dataset[i*subset])
+            seleted_dataset.append(dataset[subset*100 + i])
     else:
         seleted_dataset = dataset
-    for images, label in dataset:
+    for images, label in seleted_dataset:
         images = images.to(device)
         output_matrix = []
         for i in range(num_outputs):
