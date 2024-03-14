@@ -223,13 +223,22 @@ class Zonotope:
         return Zonotope(center, torch.stack(generators))
 
     @staticmethod
-    def from_l_inf(center: torch.Tensor, epsilon: float, shape: torch.Size):
+    def from_l_inf(center: torch.Tensor, epsilon: float, shape: torch.Size, l: float = None, u: float = None):
         if shape:
             center = center.reshape(shape)
         numel = center.numel()
         generators = torch.eye(numel) * epsilon
         generators = generators.reshape(numel, *center.shape)
-        return Zonotope(center, generators)
+        if l is None and u is None:
+            return Zonotope(center, generators)
+        else:
+            temp = Zonotope(center, generators)
+            temp.to('cpu')
+            l_zono, u_zono = temp.l_u_bound
+            l_zono = l_zono.clamp(l, u)
+            u_zono = u_zono.clamp(l, u)
+            return Zonotope((l_zono + u_zono) / 2, (u_zono - l_zono) / 2)
+
 
     @staticmethod
     def zeros_like(other: 'Zonotope'):

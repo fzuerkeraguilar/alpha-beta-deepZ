@@ -174,8 +174,6 @@ def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
-        torchvision.transforms.Lambda(lambda x: x * 255),
-        torchvision.transforms.Lambda(lambda x: x.round()),
         torchvision.transforms.Normalize((0.0,), (1,))
     ])
 
@@ -203,7 +201,7 @@ def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
             output_matrix.append(zeros)
         output_matrix = torch.stack(output_matrix, dim=0)
         output_spec = (output_matrix, torch.zeros(num_outputs, device=device, dtype=torch_dtype), False)
-        zonotope = Zonotope.from_l_inf(images, epsilon, shape=torch.Size(inp_shape))
+        zonotope = Zonotope.from_l_inf(images, epsilon, shape=torch.Size(inp_shape), l=0, u=1)
         instances.append((zono_net, zonotope, output_spec))
 
     return instances
