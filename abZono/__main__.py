@@ -107,8 +107,8 @@ def vnnlib_train_network(net, x, output_spec):
             print("sat")
             print("Final loss: {}".format(loss.item()))
             print("Iterations: {}".format(i))
-            print("Upper bound: {}".format(y.upper_bound))
-            print("Lower bound: {}".format(y.lower_bound))
+            print("Upper bound: {}".format(y.upper_bound.tolist()))
+            print("Lower bound: {}".format(y.lower_bound.tolist()))
             return True
     print("unsat")
     print("Final loss: {}".format(loss.item()))
