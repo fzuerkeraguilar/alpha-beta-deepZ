@@ -7,4 +7,4 @@ output
 venv
 profile_results
 data
-log
+logs
