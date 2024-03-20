@@ -2,6 +2,7 @@ import argparse
 import logging
 from .example_vnnlib import get_num_inputs_outputs, read_vnnlib_simple
 import numpy as np
+import copy
 import torch
 import torchvision
 import torchvision.datasets as datasets
@@ -112,8 +113,8 @@ def vnnlib_train_network(net, x, output_spec):
             return True
     print("unsat")
     print("Final loss: {}".format(loss.item()))
-    print("Upper bound: {}".format(y.upper_bound))
-    print("Lower bound: {}".format(y.lower_bound))
+    print("Upper bound: {}".format(y.upper_bound.tolist()))
+    print("Lower bound: {}".format(y.lower_bound.tolist()))
     return False
 
 
@@ -202,7 +203,7 @@ def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
         output_matrix = torch.stack(output_matrix, dim=0)
         output_spec = (output_matrix, torch.zeros(num_outputs, device=device, dtype=torch_dtype), False)
         zonotope = Zonotope.from_l_inf(images, epsilon, shape=torch.Size(inp_shape), l=0, u=1)
-        instances.append((zono_net, zonotope, output_spec))
+        instances.append((copy.deepcopy(zono_net), zonotope, output_spec))
 
     return instances
 

@@ -14,21 +14,7 @@ class Zonotope:
         self.generators: torch.Tensor = generators
 
     def __add__(self, other):
-        new_center = self.center + other.center
-        # If the number of generators is the same, we can simply add them
-        if self.generators.shape[0] == other.generators.shape[0]:
-            new_generators = self.generators + other.generators
-        # Otherwise, we need to pad the one with fewer generators
-        elif self.generators.shape[0] < other.generators.shape[0]:
-            pad = [0, 0] * (len(self.generators.shape) - 1) + [0, other.generators.shape[0] - self.generators.shape[0]]
-            padded_generators = F.pad(self.generators, pad)
-            new_generators = padded_generators + other.generators
-        else:
-            pad = [0, 0] * (len(other.generators.shape) - 1) + [0, self.generators.shape[0] - other.generators.shape[0]]
-            padded_generators = F.pad(other.generators, pad)
-            new_generators = self.generators + padded_generators
-
-        return Zonotope(new_center, new_generators)
+        return Zonotope(self.center + other, self.generators)
 
     def __sub__(self, other):
         return Zonotope(self.center - other, self.generators)
@@ -226,18 +212,17 @@ class Zonotope:
     def from_l_inf(center: torch.Tensor, epsilon: float, shape: torch.Size, l: float = None, u: float = None):
         if shape:
             center = center.reshape(shape)
-        numel = center.numel()
-        generators = torch.eye(numel) * epsilon
-        generators = generators.reshape(numel, *center.shape)
         if l is None and u is None:
+            numel = center.numel()
+            generators = torch.eye(numel) * epsilon
+            generators = generators.reshape(numel, *center.shape)
             return Zonotope(center, generators)
         else:
-            temp = Zonotope(center, generators)
-            temp.to('cpu')
-            l_zono, u_zono = temp.l_u_bound
-            l_zono = l_zono.clamp(l, u)
-            u_zono = u_zono.clamp(l, u)
-            return Zonotope((l_zono + u_zono) / 2, (u_zono - l_zono) / 2)
+            lower_limits = center - epsilon
+            lower_limits = lower_limits.clamp(min=l)
+            upper_limits = center + epsilon
+            upper_limits = upper_limits.clamp(max=u)
+            return Zonotope.from_vnnlib(list(zip(lower_limits.view(-1), upper_limits.view(-1))), shape, center.dtype)
 
 
     @staticmethod
