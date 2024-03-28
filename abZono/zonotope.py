@@ -98,16 +98,15 @@ class Zonotope:
     # spec, provided as a pair (mat, rhs), as in: mat * y <= rhs, where y is the output.
     def vnnlib_loss(self, spec):
         factors, rhs_values, disjunction = spec
-        positive_factors = torch.clamp(factors, min=0)
-        negative_factors = torch.clamp(factors, max=0)
+        sum = torch.zeros_like(factors)
+        for i, factor in enumerate(factors):
+            lhs_center = (self.center * factor - rhs_values[i]).sum(dim=-1)
+            lhs_generators = (self.generators * factor).sum(dim=-1)
+            sum[i] += (lhs_center + lhs_generators.abs().sum(dim=0))
 
-        # Retrieving l and u bounds
-        l, u = self.l_u_bound
-        lhs = positive_factors * u + negative_factors * l
-        loss = lhs.sum(dim=-1) - rhs_values.unsqueeze(1)
         if disjunction:
-            return torch.min(loss)  # Because disjunction
-        return torch.sum(torch.relu(loss))
+            return torch.min(sum)  # Because disjunction
+        return torch.sum(torch.relu(sum))
 
     def label_loss(self, label):
         l, u = self.l_u_bound

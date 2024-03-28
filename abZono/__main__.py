@@ -74,6 +74,7 @@ def main():
     unsat = []
     total_start_time = time.perf_counter()
     for i, (zono_net, x, output_spec) in enumerate(instances):
+        #print("Instance: {}".format(i))
         start_time = time.perf_counter()
         x.to(device)
         zono_net.to(device)
