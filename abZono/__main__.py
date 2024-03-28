@@ -196,12 +196,14 @@ def load_net_and_dataset(net_path, dataset, subset, epsilon, device):
         images = images.to(device)
         output_matrix = []
         for i in range(num_outputs):
+            if i == label:
+                continue
             zeros = torch.zeros(out_shape, device=device, dtype=torch_dtype)
             zeros[:, label] = -1
             zeros[:, i] = 1
             output_matrix.append(zeros)
         output_matrix = torch.stack(output_matrix, dim=0)
-        output_spec = (output_matrix, torch.zeros(num_outputs, device=device, dtype=torch_dtype), False)
+        output_spec = (output_matrix, torch.zeros(num_outputs-1, device=device, dtype=torch_dtype), False)
         zonotope = Zonotope.from_l_inf(images, epsilon, shape=torch.Size(inp_shape), l=0, u=1)
         instances.append((copy.deepcopy(zono_net), zonotope, output_spec))
 

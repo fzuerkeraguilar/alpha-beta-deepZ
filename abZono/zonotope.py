@@ -104,10 +104,10 @@ class Zonotope:
         # Retrieving l and u bounds
         l, u = self.l_u_bound
         lhs = positive_factors * u + negative_factors * l
-        loss = lhs.sum(dim=-1) - rhs_values
+        loss = lhs.sum(dim=-1) - rhs_values.unsqueeze(1)
         if disjunction:
             return torch.min(loss)  # Because disjunction
-        return torch.sum(loss)
+        return torch.sum(torch.relu(loss))
 
     def label_loss(self, label):
         l, u = self.l_u_bound
